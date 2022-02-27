@@ -30,3 +30,13 @@
 *.exe
 *.out
 *.app
+
+# Visual Studio cache directory
+.vs/*
+.idea/*
+
+*.pdb
+*.tlog
+
+MxEngine/x64/*
+MxEngine/Debug/*
