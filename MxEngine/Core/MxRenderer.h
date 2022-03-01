@@ -13,6 +13,7 @@
 #include "../Common/Camera.h"
 #include "../Common/EngineConfig.h"
 #include "../Common/ShadowMap.h"
+#include "../Common/CubeRenderTarget.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -45,6 +46,10 @@ private:
 	void UpdateShadowTransform(const GameTimer& gt);
 	void UpdateShadowPassCB(const GameTimer& gt);
 
+	void BuildPrefilterPassCB();
+
+	//更新cubemap变换矩阵数据
+	void UpdateCubeMapFacePassCBs();
 	//Build pipeline
 	//void CreateDSRTandHeap();
 	void BuildDescriptorHeaps();
@@ -56,8 +61,14 @@ private:
 	void BuildPSOs();
 	void BuildFrameResources();
 	void BuildRenderItems();
+	void BuildCubeFaceCamera(float x, float y, float z);
+	void BuildCubeDepthStencil();
+
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
 	void DrawSceneToShadowMap();
+	void DrawSceneToCubeMap();
+	void DrawIrradianceCubeMap();
+	void DrawPrefilterCubeMap();
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
 	//load res
@@ -71,6 +82,8 @@ private:
 	//heap
 	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	ComPtr<ID3D12DescriptorHeap> mCbvHeap = nullptr;
+
+	ComPtr<ID3D12DescriptorHeap> mGuiSrvDescriptorHeap = nullptr;
 	ComPtr<ID3D12DescriptorHeap> mGlobalSrvDescriptorHeap = nullptr;
 	ComPtr<ID3D12DescriptorHeap> mMaterialSrvDescriptorHeap = nullptr;
 	//
@@ -97,21 +110,45 @@ private:
 	UINT mTexSrvOffset = 0;
 	UINT mSkyTexSrvOffset = 0;
 	UINT mShadowMapSrvOffset = 0;
+	UINT mEnvCubeMapHeapIndex = 0;
+	UINT mIrradianceMapHeapIndex = 0;
+	UINT mPrefilterMapHeapIndex = 0;
+
 	Camera mCamera;
 	Camera mLightCamera;
+	Camera mCubeMapCamera[6];
 
 	//shadow
 	std::unique_ptr<ShadowMap> mShadowMap;
 	DirectX::BoundingSphere mSceneBounds;
+
 	//LightData
 	float mLightNearZ = 0.0f;
 	float mLightFarZ = 0.0f;
 	XMFLOAT3 mDirectLightDir;
+
+	float DirectLightX = 0.0f;
+	float DirectLightY = 0.57735f;
+	float DirectLightZ = -0.57735f;
+
 	XMFLOAT3 mLightPosW;
 	XMFLOAT4X4 mLightView = MathHelper::Identity4x4();
 	XMFLOAT4X4 mLightProj = MathHelper::Identity4x4();
 	XMFLOAT4X4 mShadowTransform = MathHelper::Identity4x4();
 
+	XMMATRIX captureProjection;
+	XMMATRIX captureViews[6];
+
+	std::unique_ptr<CubeRenderTarget> mEnvCubeMap = nullptr;
+	std::unique_ptr<CubeRenderTarget> mIrradianceCubeMap = nullptr;
+	std::map<int, std::unique_ptr<CubeRenderTarget>> mPrefilterCubeMap;
+	std::map<int, ComPtr<ID3D12Resource>> mPrefilterDepthStencilBuffers;
+	std::unique_ptr<UploadBuffer<PrefilterConstants>> PrefilterCB = nullptr;
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE mCubeDSV;
+	std::map<int, CD3DX12_CPU_DESCRIPTOR_HANDLE > mPrefilterCubeDSVs;
+
+	ComPtr<ID3D12Resource> mCubeDepthStencilBuffer;
 
 	//D3D12_CPU_DESCRIPTOR_HANDLE RTV_Handles[GBUFFER_COUNT];
 	XMFLOAT3 mEyePos = { 0.0f, 100.0f, 0.0f };
@@ -126,5 +163,5 @@ private:
 
 	POINT mLastMousePos;
 
-
+	bool PrePass = false;
 };

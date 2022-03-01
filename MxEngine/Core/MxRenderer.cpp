@@ -3,7 +3,8 @@
 #include "../Common/LoadTexture/Resource.h"
 
 const int gNumFrameResources = 3;
-
+const int gPrefilterLevel = 6;
+const UINT CubeMapSize = 512;
 MxRenderer::MxRenderer(HINSTANCE hInstance): D3DApp(hInstance)
 {
 	mSceneBounds.Center = XMFLOAT3(0.0f, 0.0f, 0.0f);
@@ -12,7 +13,11 @@ MxRenderer::MxRenderer(HINSTANCE hInstance): D3DApp(hInstance)
 
 MxRenderer::~MxRenderer()
 {
-	
+	// Cleanup
+	ImGui_ImplDX12_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
+
 }
 
 bool MxRenderer::Initialize()
@@ -24,21 +29,39 @@ bool MxRenderer::Initialize()
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
 	mCamera.SetPosition(0.0f, 2.0f, -15.0f);
-
+	BuildCubeFaceCamera(0.0f, 0.0f, 0.0f);
 	mShadowMap = std::make_unique<ShadowMap>(
 		md3dDevice.Get(), 2048, 2048);
 
+	mEnvCubeMap = std::make_unique<CubeRenderTarget>(md3dDevice.Get(),
+		CubeMapSize, CubeMapSize, DXGI_FORMAT_R8G8B8A8_UNORM);
+
+	mIrradianceCubeMap = std::make_unique<CubeRenderTarget>(md3dDevice.Get(),
+		CubeMapSize, CubeMapSize, DXGI_FORMAT_R8G8B8A8_UNORM);
+
+	PrefilterCB = std::make_unique<UploadBuffer<PrefilterConstants>>(md3dDevice.Get(), gPrefilterLevel, true);
+
+	for (int i = 0; i < gPrefilterLevel; ++i)
+	{
+		mPrefilterCubeMap[i] = std::make_unique<CubeRenderTarget>(md3dDevice.Get(),
+			(UINT)(CubeMapSize / std::pow(2 , i)), (UINT)(CubeMapSize / std::pow(2, i)), DXGI_FORMAT_R8G8B8A8_UNORM);
+	}
+
 	LoadTexture();
+
 	BuildRootSignature();
 	BuildDescriptorHeaps();
 	BuildShadersAndInputLayout();
 	BuildShapeGeometry();
 	BuildMaterial();
 	BuildRenderItems();
+	BuildCubeDepthStencil();
 	BuildFrameResources();
 	BuildConstantBufferViews();
 	BuileSourceBufferViews();
 	BuildPSOs();
+
+	BuildPrefilterPassCB();
 
 	// Execute the initialization commands.
 	ThrowIfFailed(mCommandList->Close());
@@ -79,45 +102,55 @@ void MxRenderer::Update(const GameTimer& gt)
 	}
 
 	//更新平行光方向
-	mDirectLightDir = XMFLOAT3(0.0f, 0.57735f, -0.57735f);
+	mDirectLightDir = XMFLOAT3(DirectLightX, DirectLightY, DirectLightZ);
 
 	UpdateObjectCBs(gt);
 	UpdateMainPassCB(gt);
 	UpdateMaterialCBs(gt);
 	UpdateShadowTransform(gt);
 	UpdateShadowPassCB(gt);
+
+
 }
 
 void MxRenderer::Draw(const GameTimer& gt)
 {
+	//mCommandList->Close();
 	auto cmdListAlloc = mCurrFrameResource->CmdListAlloc;
 
 	// Reuse the memory associated with command recording.
 	// We can only reset when the associated command lists have finished execution on the GPU.
 	ThrowIfFailed(cmdListAlloc->Reset());
 
-	// A command list can be reset after it has been added to the command queue via ExecuteCommandList.
-	// Reusing the command list reuses memory.
 	ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mPSOs["opaque"].Get()));
+	{
+		ID3D12DescriptorHeap* descriptorHeaps[] = { mMaterialSrvDescriptorHeap.Get() };
+		mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
-	ID3D12DescriptorHeap* descriptorHeaps[] = { mMaterialSrvDescriptorHeap.Get() };
-	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+		//绑定根签名
+		mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
-	//绑定根签名
-	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
+		//skymap
+		CD3DX12_GPU_DESCRIPTOR_HANDLE skyTexDescriptor(mMaterialSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+		skyTexDescriptor.Offset(mSkyTexSrvOffset, mCbvSrvUavDescriptorSize);
+		mCommandList->SetGraphicsRootDescriptorTable(4, skyTexDescriptor);
 
-	//skymap
-	CD3DX12_GPU_DESCRIPTOR_HANDLE skyTexDescriptor(mMaterialSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-	skyTexDescriptor.Offset(mSkyTexSrvOffset, mCbvSrvUavDescriptorSize);
-	mCommandList->SetGraphicsRootDescriptorTable(3, skyTexDescriptor);
+		//绑定所有贴图
+		CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mMaterialSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+		mCommandList->SetGraphicsRootDescriptorTable(3, tex);
+	}
+
+	if (!PrePass)
+	{
+		PrePass = true;
+
+		DrawSceneToCubeMap();
+		DrawIrradianceCubeMap();
+
+		DrawPrefilterCubeMap();
+	}
 
 	DrawSceneToShadowMap();
-
-	//pass数据以contant形式传入
-	auto passCB = mCurrFrameResource->PassCB->Resource();
-	mCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
-	mCommandList->RSSetViewports(1, &mScreenViewport);
-	mCommandList->RSSetScissorRects(1, &mScissorRect);
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
@@ -130,14 +163,57 @@ void MxRenderer::Draw(const GameTimer& gt)
 	// Specify the buffers we are going to render to.
 	mCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
 
+	CD3DX12_GPU_DESCRIPTOR_HANDLE prefilterTexDescriptor = mPrefilterCubeMap[0]->Srv();
+	//prefilterTexDescriptor.Offset(mPrefilterMapHeapIndex, mCbvSrvUavDescriptorSize);
+	mCommandList->SetGraphicsRootDescriptorTable(5, prefilterTexDescriptor);
+
+	//pass数据以contant形式传入
+	auto passCB = mCurrFrameResource->PassCB->Resource();
+	mCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
+	mCommandList->RSSetViewports(1, &mScreenViewport);
+	mCommandList->RSSetScissorRects(1, &mScissorRect);
+
 	mCommandList->SetPipelineState(mPSOs["opaque"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
 
-	//mCommandList->SetPipelineState(mPSOs["debug"].Get());
-	//DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Debug]);
+	mCommandList->SetPipelineState(mPSOs["debug"].Get());
+	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Debug]);
 
 	mCommandList->SetPipelineState(mPSOs["sky"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Sky]);
+
+	{
+		// Start the Dear ImGui frame
+		ImGui_ImplDX12_NewFrame();
+		ImGui_ImplWin32_NewFrame();
+		ImGui::NewFrame();
+		bool show_demo_window = true;
+
+		ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+		// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+		if (show_demo_window)
+		{
+			static float fx = 0.0f;
+			static float fy = 0.0f;
+			static float fz = 0.0f;
+
+			ImGui::Begin("GUI");
+			ImGui::Text("Control Dir Light.");
+			ImGui::SliderFloat("floatx", &DirectLightX, -1.0f, 1.0f);
+			ImGui::SliderFloat("floaty", &DirectLightY, -1.0f, 1.0f);
+			ImGui::SliderFloat("floatz", &DirectLightZ, -1.0f, 10.0f);
+
+			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+			ImGui::End();
+		}
+
+		// Rendering
+		ImGui::Render();
+
+		ID3D12DescriptorHeap* GuidescriptorHeaps[] = { mGuiSrvDescriptorHeap.Get() };
+		mCommandList->SetDescriptorHeaps(1, GuidescriptorHeaps);
+		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), mCommandList.Get());
+	}
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
@@ -167,7 +243,7 @@ void MxRenderer::CreateRtvAndDsvDescriptorHeaps()
 {
 	// Add +6 RTV for cube render target.
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
-	rtvHeapDesc.NumDescriptors = SwapChainBufferCount;
+	rtvHeapDesc.NumDescriptors = SwapChainBufferCount + 12 + 6 * gPrefilterLevel;
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	rtvHeapDesc.NodeMask = 0;
@@ -176,12 +252,23 @@ void MxRenderer::CreateRtvAndDsvDescriptorHeaps()
 
 	// Add +1 DSV for shadow map.
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
-	dsvHeapDesc.NumDescriptors = 2;
+	dsvHeapDesc.NumDescriptors = 3;
 	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	dsvHeapDesc.NodeMask = 0;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
 		&dsvHeapDesc, IID_PPV_ARGS(mDsvHeap.GetAddressOf())));
+
+	mCubeDSV = CD3DX12_CPU_DESCRIPTOR_HANDLE(
+		mDsvHeap->GetCPUDescriptorHandleForHeapStart(),
+		2,
+		mDsvDescriptorSize);
+
+	//for (int i = 0; i < gPrefilterLevel; ++i)
+	//{
+	//	mPrefilterCubeDSVs[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(mDsvHeap->GetCPUDescriptorHandleForHeapStart(), 3 + i, mDsvDescriptorSize);
+	//}
+
 }
 
 void MxRenderer::OnKeyboardInput(const GameTimer& gt)
@@ -299,7 +386,10 @@ void MxRenderer::UpdateMaterialCBs(const GameTimer& gt)
 			matConstants.DiffuseAlbedo = mat->DiffuseAlbedo;
 			matConstants.FresnelR0 = mat->FresnelR0;
 			matConstants.Roughness = mat->Roughness;
-			matConstants.DiffuseMapIndex = 1;
+			matConstants.Metallic = mat->Metallic;
+			matConstants.AlbedoMapIndex = mat->AlbedoSrvHeapIndex;
+			matConstants.NormalMapIndex = mat->NormalSrvHeapIndex;
+			matConstants.RoughnessMapIndex = mat->RoughnessSrvHeapIndex;
 			XMStoreFloat4x4(&matConstants.MatTransform, XMMatrixTranspose(matTransform));
 			//matConstants.AmbientStrength = mat->AmbientColor;
 			//matConstants.SpecularStrength = mat->SpecularStrength;
@@ -347,6 +437,8 @@ void MxRenderer::UpdateMainPassCB(const GameTimer& gt)
 
 	auto currPassCB = mCurrFrameResource->PassCB.get();
 	currPassCB->CopyData(0, mMainPassCB);
+
+	UpdateCubeMapFacePassCBs();
 }
 
 void MxRenderer::UpdateShadowTransform(const GameTimer& gt)
@@ -416,7 +508,53 @@ void MxRenderer::UpdateShadowPassCB(const GameTimer& gt)
 	mShadowPassCB.FarZ = mLightFarZ;
 
 	auto currPassCB = mCurrFrameResource->PassCB.get();
+	//阴影pass数据offset = 1
 	currPassCB->CopyData(1, mShadowPassCB);
+}
+
+void MxRenderer::BuildPrefilterPassCB()
+{
+	for (int i = 0; i < gPrefilterLevel; ++i)
+	{
+		PrefilterConstants Constants;
+		Constants.Roughness = (float)i / (float)(gPrefilterLevel - 1);
+		PrefilterCB->CopyData(i, Constants);
+	}
+}
+
+void MxRenderer::UpdateCubeMapFacePassCBs()
+{
+	for (int i = 0; i < 6; ++i)
+	{
+		PassConstants cubeFacePassCB = mMainPassCB;
+
+		//XMMATRIX view = captureViews[i];
+		//XMMATRIX proj = captureProjection;
+		XMMATRIX view = mCubeMapCamera[i].GetView();
+		XMMATRIX proj = mCubeMapCamera[i].GetProj();
+		XMMATRIX viewProj = XMMatrixMultiply(view, proj);
+		XMMATRIX invView = XMMatrixInverse(&XMMatrixDeterminant(view), view);
+		XMMATRIX invProj = XMMatrixInverse(&XMMatrixDeterminant(proj), proj);
+		XMMATRIX invViewProj = XMMatrixInverse(&XMMatrixDeterminant(viewProj), viewProj);
+		XMMATRIX shadowTransform = XMLoadFloat4x4(&mShadowTransform);
+
+		XMStoreFloat4x4(&cubeFacePassCB.View, XMMatrixTranspose(view));
+		XMStoreFloat4x4(&cubeFacePassCB.InvView, XMMatrixTranspose(invView));
+		XMStoreFloat4x4(&cubeFacePassCB.Proj, XMMatrixTranspose(proj));
+		XMStoreFloat4x4(&cubeFacePassCB.InvProj, XMMatrixTranspose(invProj));
+		XMStoreFloat4x4(&cubeFacePassCB.ViewProj, XMMatrixTranspose(viewProj));
+		XMStoreFloat4x4(&cubeFacePassCB.InvViewProj, XMMatrixTranspose(invViewProj));
+		XMStoreFloat4x4(&cubeFacePassCB.ShadowTransform, XMMatrixTranspose(shadowTransform));
+
+		cubeFacePassCB.EyePosW = XMFLOAT3(0.0f, 0.0f, 0.0f);
+		cubeFacePassCB.RenderTargetSize = XMFLOAT2((float)CubeMapSize, (float)CubeMapSize);
+		cubeFacePassCB.InvRenderTargetSize = XMFLOAT2(1.0f / CubeMapSize, 1.0f / CubeMapSize);
+
+		auto currPassCB = mCurrFrameResource->PassCB.get();
+
+		// Cube map pass cbuffers are stored in elements 1-6.
+		currPassCB->CopyData(2 + i, cubeFacePassCB);
+	}
 }
 
 void MxRenderer::BuildDescriptorHeaps()
@@ -435,23 +573,22 @@ void MxRenderer::BuildDescriptorHeaps()
 	// + 1 for the nulltex map
 	// + 1 for the shadowmaps
 
-	UINT numDescriptors = texCount  + 1/*+ 5*/;
+	UINT numDescriptors = texCount
+		+1 //shadowmap
+		+1 //EnvCubeMap
+		+1 //IrradianceMap
+		+gPrefilterLevel //all level for prefilter
+		;
 
 	//each frame
 	//0 ~ objcount
 	//objcount ~ objcount + matcount
 
 	// Save an offset to the start of the pass CBVs.  These are the last 3 descriptors.
-
-	mSkyTexSrvOffset = 0;
-	mTexSrvOffset = mSkyTexSrvOffset + 1;
 	mShadowMapSrvOffset = texCount;
-	//mDynamicTexHeapIndex = mSkyTexHeapIndex + 1;
-	//mIrradianceTexHeapIndex = mDynamicTexHeapIndex + 1;
-	//mPrefilterTexHeapIndex = mPrefilterTexHeapIndex + 1;
-	//mNullTexSrvIndex = mIrradianceTexHeapIndex + 1;
-	//mShadowMapHeapIndex = mNullTexSrvIndex + 1;
-	//mPassCbvOffset = objCount * gNumFrameResources;
+	mEnvCubeMapHeapIndex = mShadowMapSrvOffset + 1;
+	mIrradianceMapHeapIndex = mEnvCubeMapHeapIndex + 1;
+	mPrefilterMapHeapIndex = mIrradianceMapHeapIndex + 1;
 
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
 	cbvHeapDesc.NumDescriptors = 1;
@@ -469,6 +606,32 @@ void MxRenderer::BuildDescriptorHeaps()
 	srvHeapDesc.NodeMask = 0;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc,
 		IID_PPV_ARGS(&mMaterialSrvDescriptorHeap)));
+
+
+	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	desc.NumDescriptors = 1;
+	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	desc.NodeMask = 0;
+	if (md3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&mGuiSrvDescriptorHeap)) != S_OK)
+		return;
+
+	//初始化GUI
+	// 
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
+
+	// Setup Platform/Renderer backends
+	ImGui_ImplWin32_Init(mhMainWnd);
+	ImGui_ImplDX12_Init(md3dDevice.Get(), gNumFrameResources,
+		DXGI_FORMAT_R8G8B8A8_UNORM, mGuiSrvDescriptorHeap.Get(),
+		mGuiSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+		mGuiSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+
 }
 
 void MxRenderer::BuildConstantBufferViews()
@@ -478,9 +641,6 @@ void MxRenderer::BuildConstantBufferViews()
 
 void MxRenderer::BuileSourceBufferViews()
 {
-	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mMaterialSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
-
-	hDescriptor.Offset(mSkyTexSrvOffset, mCbvSrvUavDescriptorSize);
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
@@ -491,45 +651,93 @@ void MxRenderer::BuileSourceBufferViews()
 	{
 		if (res.second->Resource != nullptr)
 		{
+			CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mMaterialSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+			hDescriptor.Offset(res.second->TexHeapIndex, mCbvSrvUavDescriptorSize);
+
 			srvDesc.Format = res.second->Resource->GetDesc().Format;
 			md3dDevice->CreateShaderResourceView(res.second->Resource.Get(), &srvDesc, hDescriptor);
-
-			hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 		}
 	}
 
 	auto srvCpuStart = mMaterialSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	auto srvGpuStart = mMaterialSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 	auto dsvCpuStart = mDsvHeap->GetCPUDescriptorHandleForHeapStart();
+	auto rtvCpuStart = mRtvHeap->GetCPUDescriptorHandleForHeapStart();
 
 	mShadowMap->BuildDescriptors(
 		CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mShadowMapSrvOffset, mCbvSrvUavDescriptorSize),
 		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mShadowMapSrvOffset, mCbvSrvUavDescriptorSize),
 		CD3DX12_CPU_DESCRIPTOR_HANDLE(dsvCpuStart, 1, mDsvDescriptorSize));
+
+	int rtvOffset = SwapChainBufferCount;
+	int irradianceOffset = rtvOffset + 6;
+
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE cubeRtvHandles[6];
+	for (int i = 0; i < 6; ++i)
+		cubeRtvHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, rtvOffset + i, mRtvDescriptorSize);
+
+	mEnvCubeMap->BuildDescriptors(
+		CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mEnvCubeMapHeapIndex, mCbvSrvUavDescriptorSize),
+		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mEnvCubeMapHeapIndex, mCbvSrvUavDescriptorSize),
+		cubeRtvHandles
+		);
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE irradiancecubeRtvHandles[6];
+	for (int i = 0; i < 6; ++i)
+		irradiancecubeRtvHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, irradianceOffset + i, mRtvDescriptorSize);
+
+	mIrradianceCubeMap->BuildDescriptors(
+		CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mIrradianceMapHeapIndex, mCbvSrvUavDescriptorSize),
+		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mIrradianceMapHeapIndex, mCbvSrvUavDescriptorSize),
+		irradiancecubeRtvHandles
+	);
+
+	int prefilterRtvOffset = irradianceOffset + 6;
+	for (int i = 0; i < gPrefilterLevel; ++i)
+	{
+		CD3DX12_CPU_DESCRIPTOR_HANDLE prefilterRtvHandles[6];
+		for (int j = 0; j < 6; ++j)
+		{
+			prefilterRtvHandles[j] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, prefilterRtvOffset + j, mRtvDescriptorSize);
+		}
+
+		mPrefilterCubeMap[i]->BuildDescriptors(
+			CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mPrefilterMapHeapIndex, mCbvSrvUavDescriptorSize),
+			CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mPrefilterMapHeapIndex, mCbvSrvUavDescriptorSize),
+			prefilterRtvHandles
+		);
+
+		prefilterRtvOffset += 6;
+		mPrefilterMapHeapIndex++; //offset
+	}
+
+
 }
 
 void MxRenderer::BuildRootSignature()
 {
 	//创建描述符表
-	CD3DX12_DESCRIPTOR_RANGE texTable[2];
-	texTable[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0); //t0
-	texTable[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6, 1); //t1 - t5
-
+	CD3DX12_DESCRIPTOR_RANGE texTable[3];
+	texTable[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 100, 0); //bindless space0
+	texTable[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5, 0, 1); //t0 space1
+	texTable[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, gPrefilterLevel, 0, 2); //t0 space1
 
 	//创建根参数，保存描述符表
-	CD3DX12_ROOT_PARAMETER slotRootParameter[5];
+	CD3DX12_ROOT_PARAMETER slotRootParameter[7];
 	slotRootParameter[0].InitAsConstantBufferView(0, 0); //pass b0
 	slotRootParameter[1].InitAsConstantBufferView(1, 0); //objconstant b1
 	slotRootParameter[2].InitAsConstantBufferView(2, 0); //b2
-
 	slotRootParameter[3].InitAsDescriptorTable(1, &texTable[0]); //tex
 	slotRootParameter[4].InitAsDescriptorTable(1, &texTable[1]); //tex
+	slotRootParameter[5].InitAsDescriptorTable(1, &texTable[2]); //tex
+	slotRootParameter[6].InitAsConstantBufferView(3, 0); 
 
 	//获取采样器
 	auto staticSamplers = GetStaticSamplers();
 
 	//根签名描述结构
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(5, slotRootParameter,
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(7, slotRootParameter,
 		(UINT)staticSamplers.size(), staticSamplers.data(),
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 	//创建根签名
@@ -553,8 +761,8 @@ void MxRenderer::BuildRootSignature()
 
 void MxRenderer::BuildShadersAndInputLayout()
 {
-	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_1");
-	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_1");
+	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "PS", "ps_5_1");
 
 	mShaders["skyVS"] = d3dUtil::CompileShader(L"Shaders\\Sky.hlsl", nullptr, "VS", "vs_5_1");
 	mShaders["skyPS"] = d3dUtil::CompileShader(L"Shaders\\Sky.hlsl", nullptr, "PS", "ps_5_1");
@@ -564,6 +772,12 @@ void MxRenderer::BuildShadersAndInputLayout()
 
 	mShaders["debugVS"] = d3dUtil::CompileShader(L"Shaders\\ShadowDebug.hlsl", nullptr, "VS", "vs_5_1");
 	mShaders["debugPS"] = d3dUtil::CompileShader(L"Shaders\\ShadowDebug.hlsl", nullptr, "PS", "ps_5_1");
+
+	mShaders["IrradianceCubemapVS"] = d3dUtil::CompileShader(L"Shaders\\IrradianceCubemap.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["IrradianceCubemapPS"] = d3dUtil::CompileShader(L"Shaders\\IrradianceCubemap.hlsl", nullptr, "PS", "ps_5_1");
+
+	mShaders["PrefilterMapVS"] = d3dUtil::CompileShader(L"Shaders\\PrefilterMap.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["PrefilterMapPS"] = d3dUtil::CompileShader(L"Shaders\\PrefilterMap.hlsl", nullptr, "PS", "ps_5_1");
 
 	mInputLayout =
 	{
@@ -805,6 +1019,36 @@ void MxRenderer::BuildPSOs()
 		mShaders["skyPS"]->GetBufferSize()
 	};
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&skyPsoDesc, IID_PPV_ARGS(&mPSOs["sky"])));
+
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC irradiancePsoDesc = skyPsoDesc;
+	irradiancePsoDesc.pRootSignature = mRootSignature.Get();
+	irradiancePsoDesc.VS =
+	{
+		reinterpret_cast<BYTE*>(mShaders["IrradianceCubemapVS"]->GetBufferPointer()),
+		mShaders["IrradianceCubemapVS"]->GetBufferSize()
+	};
+	irradiancePsoDesc.PS =
+	{
+		reinterpret_cast<BYTE*>(mShaders["IrradianceCubemapPS"]->GetBufferPointer()),
+		mShaders["IrradianceCubemapPS"]->GetBufferSize()
+	};
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&irradiancePsoDesc, IID_PPV_ARGS(&mPSOs["Irradiance"])));
+
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC prefilterPsoDesc = skyPsoDesc;
+	prefilterPsoDesc.pRootSignature = mRootSignature.Get();
+	prefilterPsoDesc.VS =
+	{
+		reinterpret_cast<BYTE*>(mShaders["PrefilterMapVS"]->GetBufferPointer()),
+		mShaders["PrefilterMapVS"]->GetBufferSize()
+	};
+	prefilterPsoDesc.PS =
+	{
+		reinterpret_cast<BYTE*>(mShaders["PrefilterMapPS"]->GetBufferPointer()),
+		mShaders["PrefilterMapPS"]->GetBufferSize()
+	};
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&prefilterPsoDesc, IID_PPV_ARGS(&mPSOs["Prefilter"])));
 }
 
 void MxRenderer::BuildFrameResources()
@@ -812,7 +1056,7 @@ void MxRenderer::BuildFrameResources()
 	for (int i = 0; i < gNumFrameResources; ++i)
 	{
 		mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(),
-			2, (UINT)mAllRitems.size(), (UINT)mMaterials.size()));
+			8, (UINT)mAllRitems.size(), (UINT)mMaterials.size()));
 	}
 }
 
@@ -823,7 +1067,7 @@ void MxRenderer::BuildRenderItems()
 	XMStoreFloat4x4(&sphereRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
 	//sphereRitem->TexTransform = MathHelper::Identity4x4();
 	sphereRitem->ObjCBIndex = 0;
-	sphereRitem->Mat = mMaterials["white"].get();
+	sphereRitem->Mat = mMaterials["marble"].get();
 	sphereRitem->Geo = mGeometries["shapeGeo"].get();
 	sphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	sphereRitem->IndexCount = sphereRitem->Geo->DrawArgs["sphere"].IndexCount;
@@ -832,13 +1076,12 @@ void MxRenderer::BuildRenderItems()
 	mRitemLayer[(int)RenderLayer::Opaque].push_back(sphereRitem.get());
 	mAllRitems.push_back(std::move(sphereRitem));
 
-	
 	auto gridRitem = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&gridRitem->World, XMMatrixScaling(2.0f,2.0f, 2.0f));
+	XMStoreFloat4x4(&gridRitem->World, XMMatrixScaling(1.0f, 1.0f, 1.0f));
 	//XMStoreFloat4x4(&gridRitem->TexTransform, XMMatrixScaling(2.0f, 1.0f, 1.0f));
 	gridRitem->TexTransform = MathHelper::Identity4x4();
 	gridRitem->ObjCBIndex = 1;
-	gridRitem->Mat = mMaterials["white"].get();
+	gridRitem->Mat = mMaterials["floor"].get();
 	gridRitem->Geo = mGeometries["shapeGeo"].get();
 	gridRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	gridRitem->IndexCount = gridRitem->Geo->DrawArgs["grid"].IndexCount;
@@ -860,19 +1103,176 @@ void MxRenderer::BuildRenderItems()
 	mRitemLayer[(int)RenderLayer::Sky].push_back(skyRitem.get());
 	mAllRitems.push_back(std::move(skyRitem));
 
-	auto quadRitem = std::make_unique<RenderItem>();
-	quadRitem->World = MathHelper::Identity4x4();
-	quadRitem->TexTransform = MathHelper::Identity4x4();
-	quadRitem->ObjCBIndex = 3;
-	quadRitem->Mat = mMaterials["white"].get();
-	quadRitem->Geo = mGeometries["shapeGeo"].get();
-	quadRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	quadRitem->IndexCount = quadRitem->Geo->DrawArgs["quad"].IndexCount;
-	quadRitem->StartIndexLocation = quadRitem->Geo->DrawArgs["quad"].StartIndexLocation;
-	quadRitem->BaseVertexLocation = quadRitem->Geo->DrawArgs["quad"].BaseVertexLocation;
+	auto skyBoxRitem = std::make_unique<RenderItem>();
+	XMStoreFloat4x4(&skyBoxRitem->World, XMMatrixScaling(2.0f, 2.0f, 2.0f) * XMMatrixTranslation(0.0f, 5.0f, 0.0f));
+	skyBoxRitem->TexTransform = MathHelper::Identity4x4();
+	skyBoxRitem->ObjCBIndex = 3;
+	skyBoxRitem->Mat = mMaterials["sky"].get();
+	skyBoxRitem->Geo = mGeometries["shapeGeo"].get();
+	skyBoxRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	skyBoxRitem->IndexCount = skyBoxRitem->Geo->DrawArgs["box"].IndexCount;
+	skyBoxRitem->StartIndexLocation = skyBoxRitem->Geo->DrawArgs["box"].StartIndexLocation;
+	skyBoxRitem->BaseVertexLocation = skyBoxRitem->Geo->DrawArgs["box"].BaseVertexLocation;
+	mRitemLayer[(int)RenderLayer::Debug].push_back(skyBoxRitem.get());
+	mAllRitems.push_back(std::move(skyBoxRitem));
 
-	mRitemLayer[(int)RenderLayer::Debug].push_back(quadRitem.get());
-	mAllRitems.push_back(std::move(quadRitem));
+	auto irradianceRitem = std::make_unique<RenderItem>();
+	XMStoreFloat4x4(&irradianceRitem->World, XMMatrixScaling(10, 10, 10));
+	irradianceRitem->TexTransform = MathHelper::Identity4x4();
+	irradianceRitem->ObjCBIndex = 4;
+	irradianceRitem->Mat = mMaterials["sky"].get();
+	irradianceRitem->Geo = mGeometries["shapeGeo"].get();
+	irradianceRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	irradianceRitem->IndexCount = irradianceRitem->Geo->DrawArgs["box"].IndexCount;
+	irradianceRitem->StartIndexLocation = irradianceRitem->Geo->DrawArgs["box"].StartIndexLocation;
+	irradianceRitem->BaseVertexLocation = irradianceRitem->Geo->DrawArgs["box"].BaseVertexLocation;
+	mRitemLayer[(int)RenderLayer::Irradiance].push_back(irradianceRitem.get());
+	mAllRitems.push_back(std::move(irradianceRitem));
+
+	int offset = 5;
+	for (int i = 0; i < 10; ++i)
+	{
+		auto sphereRitem = std::make_unique<RenderItem>();
+		XMStoreFloat4x4(&sphereRitem->World, XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixTranslation(-15.0f + i * 3.0f, 10.0f, -10.0f));
+		XMStoreFloat4x4(&sphereRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
+		//sphereRitem->TexTransform = MathHelper::Identity4x4();
+		sphereRitem->ObjCBIndex = offset++;
+		sphereRitem->Mat = mMaterials["defaultR" + std::to_string(i)].get();
+		sphereRitem->Geo = mGeometries["shapeGeo"].get();
+		sphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		sphereRitem->IndexCount = sphereRitem->Geo->DrawArgs["sphere"].IndexCount;
+		sphereRitem->StartIndexLocation = sphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
+		sphereRitem->BaseVertexLocation = sphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+		mRitemLayer[(int)RenderLayer::Opaque].push_back(sphereRitem.get());
+		mAllRitems.push_back(std::move(sphereRitem));
+	}
+
+	for (int i = 0; i < 10; ++i)
+	{
+		auto sphereRitem = std::make_unique<RenderItem>();
+		XMStoreFloat4x4(&sphereRitem->World, XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixTranslation(-15.0f + i * 3.0f, 15.0f, -10.0f));
+		XMStoreFloat4x4(&sphereRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
+		//sphereRitem->TexTransform = MathHelper::Identity4x4();
+		sphereRitem->ObjCBIndex = offset++;
+		sphereRitem->Mat = mMaterials["defaultM" + std::to_string(i)].get();
+		sphereRitem->Geo = mGeometries["shapeGeo"].get();
+		sphereRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		sphereRitem->IndexCount = sphereRitem->Geo->DrawArgs["sphere"].IndexCount;
+		sphereRitem->StartIndexLocation = sphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
+		sphereRitem->BaseVertexLocation = sphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+		mRitemLayer[(int)RenderLayer::Opaque].push_back(sphereRitem.get());
+		mAllRitems.push_back(std::move(sphereRitem));
+	}
+
+
+}
+
+void MxRenderer::BuildCubeFaceCamera(float x, float y, float z)
+{
+	XMFLOAT3 center(x, y, z);
+
+	// Look along each coordinate axis.
+	XMFLOAT3 targets[6] =
+	{
+		XMFLOAT3(x + 1.0f, y, z), // +X
+		XMFLOAT3(x - 1.0f, y, z), // -X
+		XMFLOAT3(x, y + 1.0f, z), // +Y
+		XMFLOAT3(x, y - 1.0f, z), // -Y
+		XMFLOAT3(x, y, z + 1.0f), // +Z
+		XMFLOAT3(x, y, z - 1.0f)  // -Z
+	};
+
+	// Use world up vector (0,1,0) for all directions except +Y/-Y.  In these cases, we
+	// are looking down +Y or -Y, so we need a different "up" vector.
+	XMFLOAT3 ups[6] =
+	{
+		XMFLOAT3(0.0f, 1.0f, 0.0f),  // +X
+		XMFLOAT3(0.0f, 1.0f, 0.0f),  // -X
+		XMFLOAT3(0.0f, 0.0f, -1.0f), // +Y
+		XMFLOAT3(0.0f, 0.0f, +1.0f), // -Y
+		XMFLOAT3(0.0f, 1.0f, 0.0f),	 // +Z
+		XMFLOAT3(0.0f, 1.0f, 0.0f)	 // -Z
+	};
+
+	captureProjection = DirectX::XMMatrixPerspectiveFovLH(90.0f, 1.0f, 0.1f, 10.0f);
+	//captureViews[0] = MathHelper::Lookat(XMFLOAT3(0, 0, 0), XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, -1.0f, 0.0f));
+	//captureViews[1] = MathHelper::Lookat(XMFLOAT3(0, 0, 0), XMFLOAT3(-1.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, -1.0f, 0.0f));
+	//captureViews[2] = MathHelper::Lookat(XMFLOAT3(0, 0, 0), XMFLOAT3(0.0f, -1.0f, 0.0f), XMFLOAT3(0.0f, 0.0f, -1.0f));
+	//captureViews[3] = MathHelper::Lookat(XMFLOAT3(0, 0, 0), XMFLOAT3(0.0f, 1.0f, 0.0f), XMFLOAT3(0.0f, 0.0f, 1.0f));
+	//captureViews[4] = MathHelper::Lookat(XMFLOAT3(0, 0, 0), XMFLOAT3(0.0f, 0.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f));
+	//captureViews[5] = MathHelper::Lookat(XMFLOAT3(0, 0, 0), XMFLOAT3(0.0f, 0.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f));
+
+	//for (int i = 0; i < 6; ++i)
+	//{
+	//	captureViews[i] = MathHelper::Lookat(XMFLOAT3(0, 0, 0), targets[i], ups[i]);
+	//}
+
+	for (int i = 0; i < 6; ++i)
+	{
+		mCubeMapCamera[i].LookAt(center, targets[i], ups[i]);
+		mCubeMapCamera[i].SetLens(0.5f * XM_PI, 1.0f, 0.1f, 1000.0f);
+		mCubeMapCamera[i].UpdateViewMatrix();
+	}
+}
+
+void MxRenderer::BuildCubeDepthStencil()
+{
+	// Create the depth/stencil buffer and view.
+	D3D12_RESOURCE_DESC depthStencilDesc;
+	depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	depthStencilDesc.Alignment = 0;
+	depthStencilDesc.Width = CubeMapSize;
+	depthStencilDesc.Height = CubeMapSize;
+	depthStencilDesc.DepthOrArraySize = 1;
+	depthStencilDesc.MipLevels = 1;
+	depthStencilDesc.Format = mDepthStencilFormat;
+	depthStencilDesc.SampleDesc.Count = 1;
+	depthStencilDesc.SampleDesc.Quality = 0;
+	depthStencilDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+	D3D12_CLEAR_VALUE optClear;
+	optClear.Format = mDepthStencilFormat;
+	optClear.DepthStencil.Depth = 1.0f;
+	optClear.DepthStencil.Stencil = 0;
+	ThrowIfFailed(md3dDevice->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&depthStencilDesc,
+		D3D12_RESOURCE_STATE_COMMON,
+		&optClear,
+		IID_PPV_ARGS(mCubeDepthStencilBuffer.GetAddressOf())));
+
+	// Create descriptor to mip level 0 of entire resource using the format of the resource.
+	md3dDevice->CreateDepthStencilView(mCubeDepthStencilBuffer.Get(), nullptr, mCubeDSV);
+
+	// Transition the resource from its initial state to be used as a depth buffer.
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mCubeDepthStencilBuffer.Get(),
+		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+
+
+	//for (int i = 0; i < gPrefilterLevel; ++i)
+	//{
+	//	depthStencilDesc.Width = mPrefilterCubeMap[i]->GetWidth();
+	//	depthStencilDesc.Height = mPrefilterCubeMap[i]->GetHeight();
+
+	//	D3D12_CLEAR_VALUE optClear;
+	//	optClear.Format = mDepthStencilFormat;
+	//	optClear.DepthStencil.Depth = 1.0f;
+	//	optClear.DepthStencil.Stencil = 0;
+	//	ThrowIfFailed(md3dDevice->CreateCommittedResource(
+	//		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+	//		D3D12_HEAP_FLAG_NONE,
+	//		&depthStencilDesc,
+	//		D3D12_RESOURCE_STATE_COMMON,
+	//		&optClear,
+	//		IID_PPV_ARGS(mPrefilterDepthStencilBuffers[i].GetAddressOf())));
+
+	//	md3dDevice->CreateDepthStencilView(mPrefilterDepthStencilBuffers[i].Get(), nullptr, mPrefilterCubeDSVs[i]);
+
+	//	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mPrefilterDepthStencilBuffers[i].Get(),
+	//		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+	//}
 
 }
 
@@ -897,14 +1297,6 @@ void MxRenderer::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::
 
 		D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matBuffer->GetGPUVirtualAddress() + ri->Mat->MatCBIndex * matCBByteSize;
 		cmdList->SetGraphicsRootConstantBufferView(2, matCBAddress);
-
-		if (ri->Mat->AlbedoSrvHeapIndex > -1)
-		{
-			CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mMaterialSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-			UINT texIndex = ri->Mat->AlbedoSrvHeapIndex;
-			tex.Offset(texIndex, mCbvSrvUavDescriptorSize);
-			cmdList->SetGraphicsRootDescriptorTable(4, tex);
-		}
 
 		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
 	}
@@ -944,6 +1336,127 @@ void MxRenderer::DrawSceneToShadowMap()
 	// Change back to GENERIC_READ so we can read the texture in a shader.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mShadowMap->Resource(),
 		D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
+void MxRenderer::DrawSceneToCubeMap()
+{
+	mCommandList->RSSetViewports(1, &mEnvCubeMap->Viewport());
+	mCommandList->RSSetScissorRects(1, &mEnvCubeMap->ScissorRect());
+
+	// Change to RENDER_TARGET.
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mEnvCubeMap->Resource(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
+
+	// For each cube map face.
+	for (int i = 0; i < 6; ++i)
+	{
+		// Clear the back buffer and depth buffer.
+		mCommandList->ClearRenderTargetView(mEnvCubeMap->Rtv(i), Colors::LightSteelBlue, 0, nullptr);
+		mCommandList->ClearDepthStencilView(mCubeDSV, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+
+		// Specify the buffers we are going to render to.
+		mCommandList->OMSetRenderTargets(1, &mEnvCubeMap->Rtv(i), true, &mCubeDSV);
+
+		// Bind the pass constant buffer for this cube map face so we use 
+		// the right view/proj matrix for this cube face.
+		auto passCB = mCurrFrameResource->PassCB->Resource();
+		D3D12_GPU_VIRTUAL_ADDRESS passCBAddress = passCB->GetGPUVirtualAddress() + (2 + i) * passCBByteSize;
+		mCommandList->SetGraphicsRootConstantBufferView(1, passCBAddress);
+
+		//DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
+
+		mCommandList->SetPipelineState(mPSOs["sky"].Get());
+		DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Sky]);
+
+		//mCommandList->SetPipelineState(mPSOs["opaque"].Get());
+	}
+
+	// Change back to GENERIC_READ so we can read the texture in a shader.
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mEnvCubeMap->Resource(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
+void MxRenderer::DrawIrradianceCubeMap()
+{
+	mCommandList->RSSetViewports(1, &mIrradianceCubeMap->Viewport());
+	mCommandList->RSSetScissorRects(1, &mIrradianceCubeMap->ScissorRect());
+
+	// Change to RENDER_TARGET.
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mIrradianceCubeMap->Resource(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
+
+	// For each cube map face.
+	for (int i = 0; i < 6; ++i)
+	{
+		// Clear the back buffer and depth buffer.
+		mCommandList->ClearRenderTargetView(mIrradianceCubeMap->Rtv(i), Colors::LightSteelBlue, 0, nullptr);
+		mCommandList->ClearDepthStencilView(mCubeDSV, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+
+		// Specify the buffers we are going to render to.
+		mCommandList->OMSetRenderTargets(1, &mIrradianceCubeMap->Rtv(i), true, &mCubeDSV);
+
+		// Bind the pass constant buffer for this cube map face so we use 
+		// the right view/proj matrix for this cube face.
+		auto passCB = mCurrFrameResource->PassCB->Resource();
+		D3D12_GPU_VIRTUAL_ADDRESS passCBAddress = passCB->GetGPUVirtualAddress() + (2 + i) * passCBByteSize;
+		mCommandList->SetGraphicsRootConstantBufferView(1, passCBAddress);
+
+		mCommandList->SetPipelineState(mPSOs["Irradiance"].Get());
+
+		DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Sky]);
+	}
+
+	// Change back to GENERIC_READ so we can read the texture in a shader.
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mIrradianceCubeMap->Resource(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+}
+
+void MxRenderer::DrawPrefilterCubeMap()
+{
+	mCommandList->SetPipelineState(mPSOs["Prefilter"].Get());
+	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
+	UINT prefilterCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PrefilterConstants));
+	for (int i = 0; i < gPrefilterLevel; ++i)
+	{
+		// For each cube map face.
+		for (int j = 0; j < 6; ++j)
+		{
+			mCommandList->RSSetViewports(1, &mPrefilterCubeMap[i]->Viewport());
+			mCommandList->RSSetScissorRects(1, &mPrefilterCubeMap[i]->ScissorRect());
+
+			// Change to RENDER_TARGET.
+			mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mPrefilterCubeMap[i]->Resource(),
+				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+			// Clear the back buffer and depth buffer.
+			mCommandList->ClearRenderTargetView(mPrefilterCubeMap[i]->Rtv(j), Colors::LightSteelBlue, 0, nullptr);
+			//mCommandList->ClearDepthStencilView(mPrefilterCubeDSVs[i], D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+
+			// Specify the buffers we are going to render to.
+			mCommandList->OMSetRenderTargets(1, &mPrefilterCubeMap[i]->Rtv(j), true,nullptr);
+
+			// Bind the pass constant buffer for this cube map face so we use 
+			// the right view/proj matrix for this cube face.
+			auto passCB = mCurrFrameResource->PassCB->Resource();
+			D3D12_GPU_VIRTUAL_ADDRESS passCBAddress = passCB->GetGPUVirtualAddress() + (2 + j) * passCBByteSize;
+			mCommandList->SetGraphicsRootConstantBufferView(1, passCBAddress);
+			
+			D3D12_GPU_VIRTUAL_ADDRESS prefilterCBAddress = PrefilterCB->Resource()->GetGPUVirtualAddress() + i * prefilterCBByteSize;
+
+			mCommandList->SetGraphicsRootConstantBufferView(6, prefilterCBAddress);
+
+			DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Sky]);
+
+			// Change back to GENERIC_READ so we can read the texture in a shader.
+			mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mPrefilterCubeMap[i]->Resource(),
+				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+		}
+	}
+
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> MxRenderer::GetStaticSamplers()
@@ -1016,28 +1529,54 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> MxRenderer::GetStaticSamplers()
 
 void MxRenderer::LoadTexture()
 {
-	std::unordered_map<std::string, std::wstring> Load
+	std::unordered_map<std::string, std::wstring> MaterialTex
+	{
+		{"MarbleAlbedo", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_albedo.jpg"},
+		{"MarbleRoughness", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_roughness.jpg"},
+		{"MarbleNormal", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_normal.jpg"},
+		{"rustedironAlbedo", L"Assets/Texture/rustediron2_basecolor.png"},
+		{"rustedironRoughness", L"Assets/Texture/rustediron2_roughness.png"},
+		{"rustedironNormal", L"Assets/Texture/rustediron2_normal.png"},
+		{"rustedironMetallic", L"Assets/Texture/rustediron2_metallic.png"},
+	};
+
+	std::unordered_map<std::string, std::wstring> GlobalTex
 	{
 		{"hdrTex", L"Assets/Texture/museum_of_ethnography_4k.dds"},
-		{"brickWallAlbedo", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_albedo.jpg"},
-		{"brickWallRoughness", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_roughness.jpg"},
-		{"brickWallNormal", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_normal.jpg"},
-		{"brickWallHeight", L"Assets/Texture/TexturesCom_Marble_Checkerboard_512_height.jpg"},
+		{"lut",L"Assets/Texture/ibl_brdf_lut.png"},
 	};
 
 	int index = 0;
-	for (const auto& tex : Load)
+	for (const auto& tex : MaterialTex)
 	{
 		auto texObj = std::make_unique<Texture>();
 		texObj->Name = tex.first;
 		texObj->Filename = tex.second;	
 		Resource::CreateShaderResourceViewFromFile(texObj->Filename.c_str(), texObj.get());
-		if (texObj)
+		if (texObj->Resource)
 		{
 			texObj->TexHeapIndex = index++;
 			mTextures[texObj->Name] = std::move(texObj);
 		}
 	}
+
+	//index = 0;
+	for (const auto& tex : GlobalTex)
+	{
+		auto texObj = std::make_unique<Texture>();
+		texObj->Name = tex.first;
+		texObj->Filename = tex.second;
+		Resource::CreateShaderResourceViewFromFile(texObj->Filename.c_str(), texObj.get());
+		if (texObj)
+		{	
+			texObj->TexHeapIndex = index++;
+			mTextures[texObj->Name] = std::move(texObj);
+		}
+	}
+
+	mTexSrvOffset = 0;
+	mSkyTexSrvOffset = MaterialTex.size();
+
 }
 
 void MxRenderer::BuildMaterial()
@@ -1060,21 +1599,78 @@ void MxRenderer::BuildMaterial()
 	skyMat->Ao = 1.0f;
 	mMaterials[skyMat->Name] = std::move(skyMat);
 
-	auto whiteMat = std::make_shared<Material>();
-	whiteMat->Name = "white";
-	whiteMat->MatCBIndex = matIndex++;
-	whiteMat->AlbedoSrvHeapIndex = mTextures["brickWallAlbedo"]->TexHeapIndex;
-	whiteMat->MetallicSrvHeapIndex = -1;
-	whiteMat->NormalSrvHeapIndex = mTextures["brickWallNormal"]->TexHeapIndex;
-	whiteMat->RoughnessSrvHeapIndex = mTextures["brickWallRoughness"]->TexHeapIndex;
-	whiteMat->BaseColor = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
-	whiteMat->DiffuseAlbedo = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-	whiteMat->Roughness = 0.25f;
-	whiteMat->Metallic = 0.2f;
-	whiteMat->FresnelR0 = XMFLOAT3(0.07f, 0.07f, 0.07f);
-	whiteMat->AmbientColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	whiteMat->SpecularStrength = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-	whiteMat->Ao = 1.0f;
-	mMaterials[whiteMat->Name] = std::move(whiteMat);
+	for (int i = 0; i < 10; ++i)
+	{
+		auto default = std::make_shared<Material>();
+		default->Name = "defaultR" + std::to_string(i);
+		default->MatCBIndex = matIndex++;
+		default->AlbedoSrvHeapIndex = -1;
+		default->MetallicSrvHeapIndex = -1;
+		default->NormalSrvHeapIndex = -1;
+		default->RoughnessSrvHeapIndex = -1;
+		default->BaseColor = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+		default->DiffuseAlbedo = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+		default->Roughness = 0.1f * i;
+		default->Metallic = 0.2f;
+		default->FresnelR0 = XMFLOAT3(0.07f, 0.07f, 0.07f);
+		default->AmbientColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+		default->SpecularStrength = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+		default->Ao = 1.0f;
+		mMaterials[default->Name] = std::move(default);
+	}
 
+
+	for (int i = 0; i < 10; ++i)
+	{
+		auto default = std::make_shared<Material>();
+		default->Name = "defaultM" + std::to_string(i);
+		default->MatCBIndex = matIndex++;
+		default->AlbedoSrvHeapIndex = -1;
+		default->MetallicSrvHeapIndex = -1;
+		default->NormalSrvHeapIndex = -1;
+		default->RoughnessSrvHeapIndex = -1;
+		default->BaseColor = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+		default->DiffuseAlbedo = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+		default->Roughness = 0.3f;
+		default->Metallic = 0.1f * i;
+		default->FresnelR0 = XMFLOAT3(0.07f, 0.07f, 0.07f);
+		default->AmbientColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+		default->SpecularStrength = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+		default->Ao = 1.0f;
+		mMaterials[default->Name] = std::move(default);
+	}
+
+	auto floor = std::make_shared<Material>();
+	floor->Name = "floor";
+	floor->MatCBIndex = matIndex++;
+	floor->AlbedoSrvHeapIndex = mTextures["rustedironAlbedo"]->TexHeapIndex;
+	floor->MetallicSrvHeapIndex = -1;
+	floor->NormalSrvHeapIndex = mTextures["rustedironNormal"]->TexHeapIndex;
+	floor->RoughnessSrvHeapIndex = mTextures["rustedironRoughness"]->TexHeapIndex;
+	floor->BaseColor = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+	floor->DiffuseAlbedo = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+	floor->Roughness = 0.25f;
+	floor->Metallic = 0.2f;
+	floor->FresnelR0 = XMFLOAT3(0.07f, 0.07f, 0.07f);
+	floor->AmbientColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	floor->SpecularStrength = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+	floor->Ao = 1.0f;
+	mMaterials[floor->Name] = std::move(floor);
+
+	auto marble = std::make_shared<Material>();
+	marble->Name = "marble";
+	marble->MatCBIndex = matIndex++;
+	marble->AlbedoSrvHeapIndex = mTextures["MarbleAlbedo"]->TexHeapIndex;
+	marble->MetallicSrvHeapIndex = -1;
+	marble->NormalSrvHeapIndex = mTextures["MarbleNormal"]->TexHeapIndex;
+	marble->RoughnessSrvHeapIndex = mTextures["MarbleRoughness"]->TexHeapIndex;
+	marble->BaseColor = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+	marble->DiffuseAlbedo = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+	marble->Roughness = 0.25f;
+	marble->Metallic = 0.2f;
+	marble->FresnelR0 = XMFLOAT3(0.07f, 0.07f, 0.07f);
+	marble->AmbientColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	marble->SpecularStrength = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+	marble->Ao = 1.0f;
+	mMaterials[marble->Name] = std::move(marble);
 }

@@ -20,6 +20,7 @@ struct VertexOut
     float4 PosH : SV_POSITION;
     float3 PosW : POSITION;
     float4 ShadowPosH : POSITION1;
+    float3 PosL : POSITION2;
     float3 NormalW : NORMAL;
     float2 TexC : TEXCOORD;
     float3 Tangent : TANGENT0;
@@ -35,7 +36,7 @@ VertexOut VS(VertexIn vin)
     float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
     vout.TexC = mul(texC, MatTransform).xy;
     //vout.TexC = texC.xy;
-    
+    vout.PosL = vin.PosL;
     //float H = gHeightMap.SampleLevel(gsamLinearWrap, vin.TexC, 0.0).x * 1.0f;
     //float3 posL = vin.PosL + vin.NormalL * H;
     
@@ -69,37 +70,54 @@ float4 PS(VertexOut pin) : SV_Target
     //float3 TangentFragPos = mul(pin.PosW, TBN);
     //float3 ViewDir = normalize(TangentViewPos - TangentFragPos);
     //float2 texCoords = ParallaxMapping(pin.TexC, ViewDir);
-    
     //pin.TexC = texCoords;
     
-    // 从法线贴图范围[0,1]获取法线
-    float3 normal = gNormalMap.Sample(gsamLinearWrap, pin.TexC).rgb;
-    // 将法线向量转换为范围[-1,1]
-    surface.normal = mul(normalize(normal * 2.0 - 1.0), TBN);
-    
+    if (NormalMapIndex != -1)
+    {
+         // 从法线贴图范围[0,1]获取法线
+        float3 normal =  MaterialTex[NormalMapIndex].Sample(gsamLinearWrap, pin.TexC).rgb;
+        // 将法线向量转换为范围[-1,1]
+        surface.normal = mul(normalize(normal * 2.0 - 1.0), TBN);
+    }
+    else
+    {
+        surface.normal = pin.NormalW;
+
+    }
+   // surface.color = MaterialTex[AlbedoMapIndex].Sample(gsamLinearWrap, pin.TexC).rgb;
     surface.viewDirection = normalize(gEyePosW - pin.PosW);
-    surface.color = gAlbedoMap.Sample(gsamLinearWrap, pin.TexC).rgb;
-    surface.alpha = DiffuseAlbedo.a;
-    surface.metallic = 0.58f;
     
-    surface.roughness = gRoughnessMap.Sample(gsamLinearWrap, pin.TexC).r;
+    if (AlbedoMapIndex != -1)
+    {
+        surface.color = MaterialTex[AlbedoMapIndex].Sample(gsamLinearWrap, pin.TexC).rgb;
+    }
+    else
+    {
+        surface.color = DiffuseAlbedo.rgb;
+    }
+    
+    surface.alpha = DiffuseAlbedo.a;
+    surface.metallic = Metallic;
+    
+    if (RoughnessMapIndex != -1)
+    {
+        surface.roughness = MaterialTex[RoughnessMapIndex].Sample(gsamLinearWrap, pin.TexC).r;
+    }
+    else
+    {
+        surface.roughness = Roughness;
+    }
+    
     surface.reflectance = 0.5f;
     surface.occlusion = 1.0f;
-   
+    
     BRDF brdf = GetBRDF(surface);
     
     float shadowFactor = 1.0f;
-    //float depth = gShadowMap.Sample(gsamLinearClamp, pin.ShadowPosH.xy).r;
-    
-    //if (depth < pin.ShadowPosH.z)
-    //{
-    //    shadowFactor = 0.0f;
-
-    //}
     
     shadowFactor = CalcShadowFactor(pin.ShadowPosH);
     
-    float3 color = float3(0.0,0.0,0.0);
+    float3 color = IndirectBRDF(surface, brdf);
     
     for (int i = 0; i < 1; ++i)
     {

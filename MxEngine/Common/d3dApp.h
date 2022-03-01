@@ -11,6 +11,9 @@
 
 #include "d3dUtil.h"
 #include "GameTimer.h"
+#include "../imgui/imgui.h"
+#include "../imgui/imgui_impl_win32.h"
+#include "../imgui/imgui_impl_dx12.h"
 
 // Link necessary d3d12 libraries.
 #pragma comment(lib,"d3dcompiler.lib")
@@ -126,7 +129,7 @@ protected:
     DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
     DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	DXGI_FORMAT mRtvFormat[3] = { DXGI_FORMAT_R11G11B10_FLOAT,DXGI_FORMAT_R11G11B10_FLOAT,DXGI_FORMAT_R8G8B8A8_UNORM };
-	int mClientWidth = 800;
-	int mClientHeight = 600;
+	int mClientWidth = 1280;
+	int mClientHeight = 800;
 };
 

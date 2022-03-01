@@ -38,6 +38,11 @@ struct PassConstants
 	Light Lights[MaxLights];
 };
 
+struct PrefilterConstants
+{
+	float Roughness = 0.0f;
+};
+
 struct Vertex
 {
 	Vertex() {}

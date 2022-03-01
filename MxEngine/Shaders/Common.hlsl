@@ -1,7 +1,7 @@
 #define MaxLights 16
 #define MIN_REFLECTIVITY 0.04
 #define PI 3.1415926
-
+#define PREFILTER_MIP_LEVEL 6
 struct Light
 {
     float3 Strength;
@@ -12,14 +12,23 @@ struct Light
     float SpotPower; // spot light only
 };
 
-Texture2D gEquirectangularMap : register(t0);
-Texture2D gAlbedoMap : register(t1);
-Texture2D gRoughnessMap : register(t2);
-Texture2D gNormalMap : register(t3);
-Texture2D gHeightMap : register(t4);
+
+Texture2D MaterialTex[100] : register(t0);
+//Texture2D gAlbedoMap : register(t0);
+//Texture2D gRoughnessMap : register(t1);
+//Texture2D gHeightMap : register(t2);
+//Texture2D gNormalMap : register(t3);
+
 //Texture2D gMetallicMap : register(t5);
 //Texture2D gAoMap : register(t6);
-Texture2D gShadowMap : register(t5);
+
+Texture2D gLutMap : register(t0, space1);
+Texture2D gEquirectangularMap : register(t1, space1);
+Texture2D gShadowMap : register(t2, space1);
+TextureCube gCubeMap : register(t3, space1);
+TextureCube gIrradianceMap : register(t4, space1);
+
+TextureCube gPrefilterMap[6] : register(t0, space2);
 
 //StructuredBuffer<MaterialConstants> gMaterialData : register(t0, space1);
 
@@ -71,8 +80,17 @@ cbuffer cbMaterial : register(b2)
     float3 FresnelR0;
     float Roughness;
     float4x4 MatTransform;
-    uint DiffuseMapIndex;
+    float Metallic;
+    uint AlbedoMapIndex;
+    uint NormalMapIndex;
+    uint RoughnessMapIndex;
 };
+
+cbuffer cbPrefilter : register(b3)
+{
+    float roughnessCb;
+}
+
 
 //cbuffer cbMaterial : register(b2)
 //{
@@ -160,12 +178,12 @@ float PerceptualSmoothnessToPerceptualRoughness(float perceptualSmoothness)
     return (1.0 - perceptualSmoothness);
 }
 
-float2 ParallaxMapping(float2 texCoords, float3 viewDir)
-{
-    float height = gHeightMap.Sample(gsamLinearWrap, texCoords).r;
-    float2 p = viewDir.xy / viewDir.z * (height * 1.0f);
-    return texCoords - p;
-}
+//float2 ParallaxMapping(float2 texCoords, float3 viewDir)
+//{
+//    float height = gHeightMap.Sample(gsamLinearWrap, texCoords).r;
+//    float2 p = viewDir.xy / viewDir.z * (height * 1.0f);
+//    return texCoords - p;
+//}
 
 BRDF GetBRDF(Surface surface)
 {
@@ -179,8 +197,8 @@ BRDF GetBRDF(Surface surface)
     //brdf.perceptualRoughness = clamp(PerceptualSmoothnessToPerceptualRoughness(surface.smoothness), 0.045f, 1);
     //brdf.roughness = clamp(PerceptualRoughnessToRoughness(brdf.perceptualRoughness), 0.045f, 0.999f);
     #else
-    brdf.perceptualRoughness = surface.roughness;
-    brdf.roughness = surface.roughness * surface.roughness;
+    brdf.perceptualRoughness = clamp(surface.roughness, 0.045f, 1);
+    brdf.roughness = clamp(surface.roughness * surface.roughness, 0.045f, 0.999f);
     #endif
     
     brdf.reflectance = GetF0(surface.color, surface.metallic, surface.reflectance);
@@ -294,6 +312,24 @@ float Fd_DisneyRenormalized(float NoV, float NoL, float LoH, float linearRoughne
     return lightScatter * ViewScatter * energyFactor;
 }
 
+float3 SampleIrradiance(float3 Dir)
+{
+    float4 environment = gIrradianceMap.Sample(gsamLinearWrap, Dir);
+
+    return environment.rgb;
+}
+
+float3 PrefilteredColor(float3 viewDir, float3 normal, float roughness)
+{
+    float roughnessLevel = roughness * PREFILTER_MIP_LEVEL;
+    int fl = floor(roughnessLevel);
+    int cl = ceil(roughnessLevel);
+    float3 R = reflect(-viewDir, normal);
+    float3 flSample = gPrefilterMap[fl].Sample(gsamLinearWrap, R).rgb;
+    float3 clSample = gPrefilterMap[cl].Sample(gsamLinearWrap, R).rgb;
+    float3 prefilterColor = lerp(flSample, clSample, (roughnessLevel - fl));
+    return prefilterColor;
+}
 float3 DirectBrdf(Surface surface, BRDF brdf, Light light)
 {
     float3 L = light.Direction;
@@ -319,12 +355,12 @@ float3 DirectBrdf(Surface surface, BRDF brdf, Light light)
     float3 nominator = D * G * F;
     float3 specular = nominator / denominator;
     
+   
     //specular BRDF
     float3 Fr = D * F * Vis;
     //diffuse BRDF
     float3 Fd = brdf.diffuse * Fd_DisneyRenormalized(NoV, NoL, LoH, brdf.perceptualRoughness) / PI;
     //float3 Fd = Fd_Lambert();
-
     //return brdf.roughness * brdf.roughness;
     float3 kS = F;
     float3 kD = 1.0 - kS;
@@ -333,6 +369,37 @@ float3 DirectBrdf(Surface surface, BRDF brdf, Light light)
     return (kD * Fd + Fr) * light.Strength * NoL;
 }
 
+ //Indirect BRDF
+float3 IndirectBRDF(Surface surface, BRDF brdf)
+{
+    float3 N = surface.normal;
+    float3 V = surface.viewDirection;
+    float3 R = reflect(-V, N);
+    const float MAX_REFLECTION_LOD = 4.0;
+    float NoV = clamp((abs(dot(N, V)) + 1e-5), 0.001f, 1.0f);
+    
+    float3 f0 = brdf.reflectance;
+    float3 kS = F_SchlickRoughness(NoV, f0, brdf.roughness);
+    float3 kD = 1.0 - kS;
+    kD *= 1.0 - surface.metallic;
+    
+    float3 envBRDF = gLutMap.Sample(gsamLinearWrap, float2(clamp(NoV, 0.001f, 0.999f), brdf.roughness)).rgb;
+    
+    float3 irradiance = SampleIrradiance(N);
+    float3 indirectDiffuse = irradiance * brdf.diffuse;
+    
+    //IBL-1
+    float3 prefilteredColor = PrefilteredColor(V, N, brdf.roughness * MAX_REFLECTION_LOD).rgb;
+    //IBL-2
+    float3 F = kS;
+    
+    float3 indirectSpecular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+    
+    float3 ambient = (kD * indirectDiffuse + indirectSpecular) * surface.occlusion;
+    
+    return float4(ambient, 1.0);
+    
+}
 //---------------------------------------------------------------------------------------
 // PCF for shadow mapping.
 //---------------------------------------------------------------------------------------

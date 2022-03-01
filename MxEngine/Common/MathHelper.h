@@ -95,6 +95,33 @@ public:
 	static const float Infinity;
 	static const float Pi;
 
+	static DirectX::XMMATRIX Lookat(const DirectX::XMFLOAT3& pos, const DirectX::XMFLOAT3& target, const DirectX::XMFLOAT3& up)
+	{
+		DirectX::XMVECTOR P = DirectX::XMLoadFloat3(&pos);
+		DirectX::XMVECTOR T = DirectX::XMLoadFloat3(&target);
+		DirectX::XMVECTOR U = DirectX::XMLoadFloat3(&up);
+		
+		DirectX::FXMVECTOR Forward = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(T, P));
+		DirectX::FXMVECTOR Right = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(U, Forward));
+		DirectX::FXMVECTOR Up = DirectX::XMVector3Cross(Forward, Right);
+
+		DirectX::XMVECTOR Z = DirectX::XMVector3Normalize(DirectX::XMVectorSubtract(T, P));
+		DirectX::XMVECTOR Y = U;
+		DirectX::XMVECTOR X = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(Y, Z));
+		Y = DirectX::XMVector3Normalize(DirectX::XMVector3Cross(Z, X));
+
+		DirectX::XMFLOAT4 W(-DirectX::XMVectorGetX(DirectX::XMVector3Dot(X, P)), -DirectX::XMVectorGetX(DirectX::XMVector3Dot(Y, P)), -DirectX::XMVectorGetX(DirectX::XMVector3Dot(Z, P)), 1.0);
+		DirectX::XMVECTOR vW = DirectX::XMLoadFloat4(&W);
+	
+		DirectX::XMMATRIX lookatMatrix(X, Y, Z, vW);
+	
+		DirectX::XMMATRIX m(X.m128_f32[0], Y.m128_f32[0], Z.m128_f32[0], -DirectX::XMVectorGetX(DirectX::XMVector3Dot(X, P)),
+			X.m128_f32[1], Y.m128_f32[1], Z.m128_f32[1], -DirectX::XMVectorGetX(DirectX::XMVector3Dot(Y, P)),
+			X.m128_f32[2], Y.m128_f32[2], Z.m128_f32[2], -DirectX::XMVectorGetX(DirectX::XMVector3Dot(Z, P)),
+			X.m128_f32[3], Y.m128_f32[3], Z.m128_f32[3], 1.0);
+
+		return lookatMatrix;
+	}
 
 };
 
