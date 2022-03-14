@@ -36,6 +36,10 @@ D3DApp::~D3DApp()
 	if(md3dDevice != nullptr)
 		FlushCommandQueue();
 
+	// Cleanup
+	ImGui_ImplDX12_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
 	//mSwapChain->Release();
 	//md3dDevice->Release();
 	//mdxgiFactory->Release();
@@ -360,6 +364,16 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	}
 
 	return DefWindowProc(hwnd, msg, wParam, lParam);
+}
+
+void D3DApp::SaveMesh(std::unique_ptr<MeshGeometry>& mgo)
+{
+	mGeometries[mgo->Name] = std::move(mgo);
+}
+
+void D3DApp::SaveTexturePath(const std::string& name, std::wstring& path)
+{
+	MaterialTex.insert({ name, path});
 }
 
 bool D3DApp::InitMainWindow()

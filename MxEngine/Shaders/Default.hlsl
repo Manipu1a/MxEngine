@@ -95,22 +95,35 @@ float4 PS(VertexOut pin) : SV_Target
     {
         surface.color = DiffuseAlbedo.rgb;
     }
+   
     
     surface.alpha = DiffuseAlbedo.a;
     surface.metallic = Metallic;
     
     if (RoughnessMapIndex != -1)
     {
-        surface.roughness = MaterialTex[RoughnessMapIndex].Sample(gsamLinearWrap, pin.TexC).r;
+        surface.roughness = MaterialTex[RoughnessMapIndex].Sample(gsamLinearWrap, pin.TexC).g;
+        
+        surface.metallic = MaterialTex[RoughnessMapIndex].Sample(gsamLinearWrap, pin.TexC).b;
+
     }
     else
     {
         surface.roughness = Roughness;
     }
     
-    surface.reflectance = 0.5f;
-    surface.occlusion = 1.0f;
     
+    if (AlbedoMapIndex != -1)
+    {
+        surface.occlusion = MaterialTex[AlbedoMapIndex].Sample(gsamLinearWrap, pin.TexC).r;
+    }
+    else
+    {
+        surface.occlusion = 1.0;
+    }
+    
+    surface.reflectance = 0.5f;
+
     BRDF brdf = GetBRDF(surface);
     
     float shadowFactor = 1.0f;
@@ -126,6 +139,14 @@ float4 PS(VertexOut pin) : SV_Target
     
     color = color / (color + float3(1.0, 1.0, 1.0));
     color = pow(color, float3(1.0 / 2.2, 1.0 / 2.2, 1.0 / 2.2));
+    
+        
+    if (EmissiveMapIndex != -1)
+    {
+        float3 emissive = MaterialTex[EmissiveMapIndex].Sample(gsamLinearWrap, pin.TexC).rgb;
+        color += emissive;
+    }
+    
     
     return float4(color, 1.0f);
 }

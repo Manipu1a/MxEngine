@@ -4,10 +4,10 @@
 
 #pragma once
 
-#if defined(DEBUG) || defined(_DEBUG)
-#define _CRTDBG_MAP_ALLOC
-#include <crtdbg.h>
-#endif
+//#if defined(DEBUG) || defined(_DEBUG)
+//#define _CRTDBG_MAP_ALLOC
+//#include <crtdbg.h>
+//#endif
 
 #include "d3dUtil.h"
 #include "GameTimer.h"
@@ -30,7 +30,6 @@ protected:
     virtual ~D3DApp();
 
 public:
-
     static D3DApp* GetApp();
     
 	HINSTANCE AppInst()const;
@@ -47,6 +46,11 @@ public:
 
 	Microsoft::WRL::ComPtr<ID3D12Device> GetDevice() { return md3dDevice; }
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return mCommandList; }
+
+	
+	//存入模型资源
+	void SaveMesh(std::unique_ptr<MeshGeometry>& mgo);
+	void SaveTexturePath(const std::string& name, std::wstring& path);
 
 protected:
     virtual void CreateRtvAndDsvDescriptorHeaps();
@@ -131,5 +135,15 @@ protected:
 	DXGI_FORMAT mRtvFormat[3] = { DXGI_FORMAT_R11G11B10_FLOAT,DXGI_FORMAT_R11G11B10_FLOAT,DXGI_FORMAT_R8G8B8A8_UNORM };
 	int mClientWidth = 1280;
 	int mClientHeight = 800;
+
+
+	//资源
+	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
+	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>> mShaders;
+	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12PipelineState>> mPSOs;
+	std::unordered_map<std::string, std::unique_ptr<Texture>> mTextures;
+	std::unordered_map<std::string, std::shared_ptr<Material>> mMaterials;
+	//tex
+	std::unordered_map<std::string, std::wstring> MaterialTex;
 };
 

@@ -70,6 +70,11 @@ struct Vertex
 	DirectX::XMFLOAT3 Binormal;
 };
 
+struct TempVertex
+{
+	//зјБъ
+	DirectX::XMFLOAT3 Position;
+};
 // Stores the resources needed for the CPU to build the command lists
 // for a frame.  
 struct FrameResource

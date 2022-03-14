@@ -67,6 +67,7 @@ struct Material
 
 	int RoughnessSrvHeapIndex = -1;
 
+	int EmissiveSrvHeapIndex = -1;
 
 	// Dirty flag indicating the material has changed and we need to update the constant buffer.
 	// Because we have a material constant buffer for each FrameResource, we have to apply the
@@ -264,6 +265,7 @@ struct MaterialConstants
 	UINT AlbedoMapIndex = 0;
 	UINT NormalMapIndex = 0;
 	UINT RoughnessMapIndex = 0;
+	UINT EmissiveMapIndex = 0;
 };
 
 

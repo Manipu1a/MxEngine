@@ -8,4 +8,6 @@ struct Texture;
 namespace Resource
 {
 	HRESULT CreateShaderResourceViewFromFile(const wchar_t* szFileName, Texture* textureData);
+
+	HRESULT LoadModelFromFile(const char* szFileName);
 }

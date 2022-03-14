@@ -15,9 +15,11 @@
 #include "../Common/ShadowMap.h"
 #include "../Common/CubeRenderTarget.h"
 
+
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace DirectX::PackedVector;
+
 
 class MxRenderer : public D3DApp 
 {
@@ -74,6 +76,7 @@ private:
 	//load res
 	void LoadTexture();
 	void BuildMaterial();
+	void LoadModel();
 private:
 	//frame
 	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
@@ -86,14 +89,11 @@ private:
 	ComPtr<ID3D12DescriptorHeap> mGuiSrvDescriptorHeap = nullptr;
 	ComPtr<ID3D12DescriptorHeap> mGlobalSrvDescriptorHeap = nullptr;
 	ComPtr<ID3D12DescriptorHeap> mMaterialSrvDescriptorHeap = nullptr;
-	//
-	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
-	std::unordered_map<std::string, ComPtr<ID3DBlob>> mShaders;
-	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> mPSOs;
-	std::unordered_map<std::string, std::unique_ptr<Texture>> mTextures;
-	std::unordered_map<std::string, std::shared_ptr<Material>> mMaterials;
-	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 
+	//
+
+	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
+	
 	// List of all the render items.
 	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
 

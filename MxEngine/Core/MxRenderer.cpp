@@ -2,6 +2,7 @@
 #include "../Common/GeometryGenerator.h"
 #include "../Common/LoadTexture/Resource.h"
 
+//#define CGLTF_IMPLEMENTATION
 const int gNumFrameResources = 3;
 const int gPrefilterLevel = 6;
 const UINT CubeMapSize = 512;
@@ -13,10 +14,7 @@ MxRenderer::MxRenderer(HINSTANCE hInstance): D3DApp(hInstance)
 
 MxRenderer::~MxRenderer()
 {
-	// Cleanup
-	ImGui_ImplDX12_Shutdown();
-	ImGui_ImplWin32_Shutdown();
-	ImGui::DestroyContext();
+
 
 }
 
@@ -47,8 +45,8 @@ bool MxRenderer::Initialize()
 			(UINT)(CubeMapSize / std::pow(2 , i)), (UINT)(CubeMapSize / std::pow(2, i)), DXGI_FORMAT_R8G8B8A8_UNORM);
 	}
 
+	LoadModel();
 	LoadTexture();
-
 	BuildRootSignature();
 	BuildDescriptorHeaps();
 	BuildShadersAndInputLayout();
@@ -390,6 +388,8 @@ void MxRenderer::UpdateMaterialCBs(const GameTimer& gt)
 			matConstants.AlbedoMapIndex = mat->AlbedoSrvHeapIndex;
 			matConstants.NormalMapIndex = mat->NormalSrvHeapIndex;
 			matConstants.RoughnessMapIndex = mat->RoughnessSrvHeapIndex;
+			matConstants.EmissiveMapIndex = mat->EmissiveSrvHeapIndex;
+			
 			XMStoreFloat4x4(&matConstants.MatTransform, XMMatrixTranspose(matTransform));
 			//matConstants.AmbientStrength = mat->AmbientColor;
 			//matConstants.SpecularStrength = mat->SpecularStrength;
@@ -1129,7 +1129,22 @@ void MxRenderer::BuildRenderItems()
 	mRitemLayer[(int)RenderLayer::Irradiance].push_back(irradianceRitem.get());
 	mAllRitems.push_back(std::move(irradianceRitem));
 
-	int offset = 5;
+	auto modelRitem = std::make_unique<RenderItem>();
+	
+	XMStoreFloat4x4(&modelRitem->World, XMMatrixRotationRollPitchYaw(MathHelper::Pi / 2, MathHelper::Pi ,0.0f) * XMMatrixTranslation(0.0f, 20.0f, 0.0f));
+	XMStoreFloat4x4(&modelRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
+	//sphereRitem->TexTransform = MathHelper::Identity4x4();
+	modelRitem->ObjCBIndex = 5;
+	modelRitem->Mat = mMaterials["modelMat"].get();
+	modelRitem->Geo = mGeometries["modelGeo"].get();
+	modelRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	modelRitem->IndexCount = modelRitem->Geo->DrawArgs["model"].IndexCount;
+	modelRitem->StartIndexLocation = modelRitem->Geo->DrawArgs["model"].StartIndexLocation;
+	modelRitem->BaseVertexLocation = modelRitem->Geo->DrawArgs["model"].BaseVertexLocation;
+	mRitemLayer[(int)RenderLayer::Opaque].push_back(modelRitem.get());
+	mAllRitems.push_back(std::move(modelRitem));
+
+	int offset = 6;
 	for (int i = 0; i < 10; ++i)
 	{
 		auto sphereRitem = std::make_unique<RenderItem>();
@@ -1529,16 +1544,24 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> MxRenderer::GetStaticSamplers()
 
 void MxRenderer::LoadTexture()
 {
-	std::unordered_map<std::string, std::wstring> MaterialTex
-	{
-		{"MarbleAlbedo", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_albedo.jpg"},
-		{"MarbleRoughness", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_roughness.jpg"},
-		{"MarbleNormal", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_normal.jpg"},
-		{"rustedironAlbedo", L"Assets/Texture/rustediron2_basecolor.png"},
-		{"rustedironRoughness", L"Assets/Texture/rustediron2_roughness.png"},
-		{"rustedironNormal", L"Assets/Texture/rustediron2_normal.png"},
-		{"rustedironMetallic", L"Assets/Texture/rustediron2_metallic.png"},
-	};
+	//std::unordered_map<std::string, std::wstring> MaterialTex
+	//{
+	//	{"MarbleAlbedo", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_albedo.jpg"},
+	//	{"MarbleRoughness", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_roughness.jpg"},
+	//	{"MarbleNormal", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_normal.jpg"},
+	//	{"rustedironAlbedo", L"Assets/Texture/rustediron2_basecolor.png"},
+	//	{"rustedironRoughness", L"Assets/Texture/rustediron2_roughness.png"},
+	//	{"rustedironNormal", L"Assets/Texture/rustediron2_normal.png"},
+	//	{"rustedironMetallic", L"Assets/Texture/rustediron2_metallic.png"},
+	//};
+
+	MaterialTex.insert({ "MarbleAlbedo", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_albedo.jpg" });
+	MaterialTex.insert({ "MarbleRoughness", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_roughness.jpg" });
+	MaterialTex.insert({ "MarbleNormal", L"Assets/Texture/TexturesCom_Marble_TilesDiamond2_512_normal.jpg" });
+	MaterialTex.insert({ "rustedironAlbedo", L"Assets/Texture/rustediron2_basecolor.png"});
+	MaterialTex.insert({ "rustedironRoughness", L"Assets/Texture/rustediron2_roughness.png" });
+	MaterialTex.insert({ "rustedironNormal", L"Assets/Texture/rustediron2_normal.png" });
+	MaterialTex.insert({ "rustedironMetallic", L"Assets/Texture/rustediron2_metallic.png" });
 
 	std::unordered_map<std::string, std::wstring> GlobalTex
 	{
@@ -1546,7 +1569,7 @@ void MxRenderer::LoadTexture()
 		{"lut",L"Assets/Texture/ibl_brdf_lut.png"},
 	};
 
-	int index = 0;
+	int index = mTextures.size();
 	for (const auto& tex : MaterialTex)
 	{
 		auto texObj = std::make_unique<Texture>();
@@ -1673,4 +1696,28 @@ void MxRenderer::BuildMaterial()
 	marble->SpecularStrength = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 	marble->Ao = 1.0f;
 	mMaterials[marble->Name] = std::move(marble);
+
+	auto modelMat = std::make_shared<Material>();
+	modelMat->Name = "modelMat";
+	modelMat->MatCBIndex = matIndex++;
+	modelMat->AlbedoSrvHeapIndex = mTextures["Default_albedo"]->TexHeapIndex;
+	modelMat->MetallicSrvHeapIndex = -1;
+	modelMat->NormalSrvHeapIndex = mTextures["Default_normal"]->TexHeapIndex;
+	modelMat->RoughnessSrvHeapIndex = mTextures["metallicRoughnessTexture"]->TexHeapIndex;
+	modelMat->EmissiveSrvHeapIndex = mTextures["Default_emissive"]->TexHeapIndex;
+	modelMat->BaseColor = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+	modelMat->DiffuseAlbedo = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+	modelMat->Roughness = 0.25f;
+	modelMat->Metallic = 0.2f;
+	modelMat->FresnelR0 = XMFLOAT3(0.07f, 0.07f, 0.07f);
+	modelMat->AmbientColor = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	modelMat->SpecularStrength = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+	modelMat->Ao = 1.0f;
+	mMaterials[modelMat->Name] = std::move(modelMat);
+}
+
+void MxRenderer::LoadModel()
+{
+	Resource::LoadModelFromFile("Assets/GltfModel/DamagedHelmet.gltf");
+
 }

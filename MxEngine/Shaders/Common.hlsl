@@ -84,6 +84,7 @@ cbuffer cbMaterial : register(b2)
     uint AlbedoMapIndex;
     uint NormalMapIndex;
     uint RoughnessMapIndex;
+    uint EmissiveMapIndex;
 };
 
 cbuffer cbPrefilter : register(b3)
@@ -328,7 +329,7 @@ float3 PrefilteredColor(float3 viewDir, float3 normal, float roughness)
     float3 flSample = gPrefilterMap[fl].Sample(gsamLinearWrap, R).rgb;
     float3 clSample = gPrefilterMap[cl].Sample(gsamLinearWrap, R).rgb;
     float3 prefilterColor = lerp(flSample, clSample, (roughnessLevel - fl));
-    return prefilterColor;
+    return flSample;
 }
 float3 DirectBrdf(Surface surface, BRDF brdf, Light light)
 {
@@ -389,7 +390,7 @@ float3 IndirectBRDF(Surface surface, BRDF brdf)
     float3 indirectDiffuse = irradiance * brdf.diffuse;
     
     //IBL-1
-    float3 prefilteredColor = PrefilteredColor(V, N, brdf.roughness * MAX_REFLECTION_LOD).rgb;
+    float3 prefilteredColor = PrefilteredColor(V, N, brdf.roughness).rgb;
     //IBL-2
     float3 F = kS;
     
