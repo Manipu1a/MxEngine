@@ -31,17 +31,17 @@ bool MxRenderer::Initialize()
 	mShadowMap = std::make_unique<ShadowMap>(
 		md3dDevice.Get(), 2048, 2048);
 
-	mEnvCubeMap = std::make_unique<CubeRenderTarget>(md3dDevice.Get(),
+	mEnvCubeMap = std::make_unique<MECubeRenderTarget>(md3dDevice.Get(),
 		CubeMapSize, CubeMapSize, DXGI_FORMAT_R8G8B8A8_UNORM);
 
-	mIrradianceCubeMap = std::make_unique<CubeRenderTarget>(md3dDevice.Get(),
+	mIrradianceCubeMap = std::make_unique<MECubeRenderTarget>(md3dDevice.Get(),
 		CubeMapSize, CubeMapSize, DXGI_FORMAT_R8G8B8A8_UNORM);
 
 	PrefilterCB = std::make_unique<UploadBuffer<PrefilterConstants>>(md3dDevice.Get(), gPrefilterLevel, true);
 
 	for (int i = 0; i < gPrefilterLevel; ++i)
 	{
-		mPrefilterCubeMap[i] = std::make_unique<CubeRenderTarget>(md3dDevice.Get(),
+		mPrefilterCubeMap[i] = std::make_unique<MECubeRenderTarget>(md3dDevice.Get(),
 			(UINT)(CubeMapSize / std::pow(2 , i)), (UINT)(CubeMapSize / std::pow(2, i)), DXGI_FORMAT_R8G8B8A8_UNORM);
 	}
 
@@ -171,8 +171,12 @@ void MxRenderer::Draw(const GameTimer& gt)
 	mCommandList->RSSetViewports(1, &mScreenViewport);
 	mCommandList->RSSetScissorRects(1, &mScissorRect);
 
-	mCommandList->SetPipelineState(mPSOs["opaque"].Get());
-	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
+	//mCommandList->SetPipelineState(mPSOs["opaque"].Get());
+	//DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
+	// 
+	//绘制延迟pass几何信息
+	mCommandList->SetPipelineState(mPSOs["DeferredGeo"].Get());
+	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::DeferredGeo]);
 
 	mCommandList->SetPipelineState(mPSOs["debug"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Debug]);
@@ -779,6 +783,9 @@ void MxRenderer::BuildShadersAndInputLayout()
 	mShaders["PrefilterMapVS"] = d3dUtil::CompileShader(L"Shaders\\PrefilterMap.hlsl", nullptr, "VS", "vs_5_1");
 	mShaders["PrefilterMapPS"] = d3dUtil::CompileShader(L"Shaders\\PrefilterMap.hlsl", nullptr, "PS", "ps_5_1");
 
+	mShaders["DeferredVS"] = d3dUtil::CompileShader(L"Shaders\\Deferred.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["DeferredPS"] = d3dUtil::CompileShader(L"Shaders\\Deferred.hlsl", nullptr, "PS", "ps_5_1");
+
 	mInputLayout =
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -947,12 +954,23 @@ void MxRenderer::BuildPSOs()
 	opaquePsoDesc.DSVFormat = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 
-	//ID3D12DebugDevice* pDebugDevice = NULL;
-	//md3dDevice->QueryInterface(&pDebugDevice);
-	//md3dDevice->Release();
-	//pDebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL);
-	//pDebugDevice->Release();
-	// 
+	//
+	// PSO for deferred Geometry pass.
+	//
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC deferredGeoPsoDesc = opaquePsoDesc;
+	deferredGeoPsoDesc.pRootSignature = mRootSignature.Get();
+	deferredGeoPsoDesc.VS =
+	{
+		reinterpret_cast<BYTE*>(mShaders["DeferredVS"]->GetBufferPointer()),
+		mShaders["DeferredVS"]->GetBufferSize()
+	};
+	deferredGeoPsoDesc.PS =
+	{
+		reinterpret_cast<BYTE*>(mShaders["DeferredPS"]->GetBufferPointer()),
+		mShaders["DeferredPS"]->GetBufferSize()
+	};
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&deferredGeoPsoDesc, IID_PPV_ARGS(&mPSOs["DeferredGeo"])));
+
 
 	//
 	// PSO for shadow map pass.
@@ -1074,6 +1092,8 @@ void MxRenderer::BuildRenderItems()
 	sphereRitem->StartIndexLocation = sphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
 	sphereRitem->BaseVertexLocation = sphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
 	mRitemLayer[(int)RenderLayer::Opaque].push_back(sphereRitem.get());
+	mRitemLayer[(int)RenderLayer::DeferredGeo].push_back(sphereRitem.get());
+
 	mAllRitems.push_back(std::move(sphereRitem));
 
 	auto gridRitem = std::make_unique<RenderItem>();

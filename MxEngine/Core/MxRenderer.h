@@ -13,7 +13,7 @@
 #include "../Common/Camera.h"
 #include "../Common/EngineConfig.h"
 #include "../Common/ShadowMap.h"
-#include "../Common/CubeRenderTarget.h"
+#include "../Common/MECubeRenderTarget.h"
 
 
 using Microsoft::WRL::ComPtr;
@@ -139,9 +139,9 @@ private:
 	XMMATRIX captureProjection;
 	XMMATRIX captureViews[6];
 
-	std::unique_ptr<CubeRenderTarget> mEnvCubeMap = nullptr;
-	std::unique_ptr<CubeRenderTarget> mIrradianceCubeMap = nullptr;
-	std::map<int, std::unique_ptr<CubeRenderTarget>> mPrefilterCubeMap;
+	std::unique_ptr<MECubeRenderTarget> mEnvCubeMap = nullptr;
+	std::unique_ptr<MECubeRenderTarget> mIrradianceCubeMap = nullptr;
+	std::map<int, std::unique_ptr<MECubeRenderTarget>> mPrefilterCubeMap;
 	std::map<int, ComPtr<ID3D12Resource>> mPrefilterDepthStencilBuffers;
 	std::unique_ptr<UploadBuffer<PrefilterConstants>> PrefilterCB = nullptr;
 
