@@ -67,10 +67,14 @@ private:
 	void BuildCubeDepthStencil();
 
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
+	//ªÊ÷∆depth map
 	void DrawSceneToShadowMap();
+	//ªÊ÷∆cube map
 	void DrawSceneToCubeMap();
 	void DrawIrradianceCubeMap();
 	void DrawPrefilterCubeMap();
+	//gbuffer pass
+	void DrawGBufferMap();
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
 	//load res
@@ -110,9 +114,10 @@ private:
 	UINT mTexSrvOffset = 0;
 	UINT mSkyTexSrvOffset = 0;
 	UINT mShadowMapSrvOffset = 0;
-	UINT mEnvCubeMapHeapIndex = 0;
-	UINT mIrradianceMapHeapIndex = 0;
-	UINT mPrefilterMapHeapIndex = 0;
+	UINT mEnvCubeMapSrvOffset = 0;
+	UINT mIrradianceMapSrvOffset = 0;
+	UINT mPrefilterMapSrvOffset = 0;
+	UINT mGBufferMapSrvOffset = 0;
 
 	Camera mCamera;
 	Camera mLightCamera;
@@ -121,6 +126,9 @@ private:
 	//shadow
 	std::unique_ptr<ShadowMap> mShadowMap;
 	DirectX::BoundingSphere mSceneBounds;
+
+	//MRT
+	std::unique_ptr<MERenderTarget> mRenderTarget0;
 
 	//LightData
 	float mLightNearZ = 0.0f;

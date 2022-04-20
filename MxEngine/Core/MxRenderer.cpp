@@ -45,6 +45,8 @@ bool MxRenderer::Initialize()
 			(UINT)(CubeMapSize / std::pow(2 , i)), (UINT)(CubeMapSize / std::pow(2, i)), DXGI_FORMAT_R8G8B8A8_UNORM);
 	}
 
+	mRenderTarget0 = std::make_unique<MERenderTarget>(md3dDevice.Get(), 2048, 2048, DXGI_FORMAT_R8G8B8A8_UNORM);
+
 	LoadModel();
 	LoadTexture();
 	BuildRootSignature();
@@ -150,6 +152,8 @@ void MxRenderer::Draw(const GameTimer& gt)
 
 	DrawSceneToShadowMap();
 
+	DrawGBufferMap();
+
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
@@ -171,13 +175,9 @@ void MxRenderer::Draw(const GameTimer& gt)
 	mCommandList->RSSetViewports(1, &mScreenViewport);
 	mCommandList->RSSetScissorRects(1, &mScissorRect);
 
-	//mCommandList->SetPipelineState(mPSOs["opaque"].Get());
-	//DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
+	mCommandList->SetPipelineState(mPSOs["opaque"].Get());
+	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
 	// 
-	//绘制延迟pass几何信息
-	mCommandList->SetPipelineState(mPSOs["DeferredGeo"].Get());
-	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::DeferredGeo]);
-
 	mCommandList->SetPipelineState(mPSOs["debug"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Debug]);
 
@@ -245,7 +245,7 @@ void MxRenderer::CreateRtvAndDsvDescriptorHeaps()
 {
 	// Add +6 RTV for cube render target.
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
-	rtvHeapDesc.NumDescriptors = SwapChainBufferCount + 12 + 6 * gPrefilterLevel;
+	rtvHeapDesc.NumDescriptors = SwapChainBufferCount + 12 + 6 * gPrefilterLevel + 1;
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	rtvHeapDesc.NodeMask = 0;
@@ -582,6 +582,7 @@ void MxRenderer::BuildDescriptorHeaps()
 		+1 //EnvCubeMap
 		+1 //IrradianceMap
 		+gPrefilterLevel //all level for prefilter
+		+ 1 //gbuffer 0
 		;
 
 	//each frame
@@ -590,9 +591,10 @@ void MxRenderer::BuildDescriptorHeaps()
 
 	// Save an offset to the start of the pass CBVs.  These are the last 3 descriptors.
 	mShadowMapSrvOffset = texCount;
-	mEnvCubeMapHeapIndex = mShadowMapSrvOffset + 1;
-	mIrradianceMapHeapIndex = mEnvCubeMapHeapIndex + 1;
-	mPrefilterMapHeapIndex = mIrradianceMapHeapIndex + 1;
+	mEnvCubeMapSrvOffset = mShadowMapSrvOffset + 1;
+	mIrradianceMapSrvOffset = mEnvCubeMapSrvOffset + 1;
+	mPrefilterMapSrvOffset = mIrradianceMapSrvOffset + 1;
+	mGBufferMapSrvOffset = mPrefilterMapSrvOffset + 6;
 
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
 	cbvHeapDesc.NumDescriptors = 1;
@@ -682,8 +684,8 @@ void MxRenderer::BuileSourceBufferViews()
 		cubeRtvHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, rtvOffset + i, mRtvDescriptorSize);
 
 	mEnvCubeMap->BuildDescriptors(
-		CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mEnvCubeMapHeapIndex, mCbvSrvUavDescriptorSize),
-		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mEnvCubeMapHeapIndex, mCbvSrvUavDescriptorSize),
+		CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mEnvCubeMapSrvOffset, mCbvSrvUavDescriptorSize),
+		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mEnvCubeMapSrvOffset, mCbvSrvUavDescriptorSize),
 		cubeRtvHandles
 		);
 
@@ -692,8 +694,8 @@ void MxRenderer::BuileSourceBufferViews()
 		irradiancecubeRtvHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, irradianceOffset + i, mRtvDescriptorSize);
 
 	mIrradianceCubeMap->BuildDescriptors(
-		CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mIrradianceMapHeapIndex, mCbvSrvUavDescriptorSize),
-		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mIrradianceMapHeapIndex, mCbvSrvUavDescriptorSize),
+		CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mIrradianceMapSrvOffset, mCbvSrvUavDescriptorSize),
+		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mIrradianceMapSrvOffset, mCbvSrvUavDescriptorSize),
 		irradiancecubeRtvHandles
 	);
 
@@ -707,28 +709,39 @@ void MxRenderer::BuileSourceBufferViews()
 		}
 
 		mPrefilterCubeMap[i]->BuildDescriptors(
-			CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mPrefilterMapHeapIndex, mCbvSrvUavDescriptorSize),
-			CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mPrefilterMapHeapIndex, mCbvSrvUavDescriptorSize),
+			CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mPrefilterMapSrvOffset, mCbvSrvUavDescriptorSize),
+			CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mPrefilterMapSrvOffset, mCbvSrvUavDescriptorSize),
 			prefilterRtvHandles
 		);
 
 		prefilterRtvOffset += 6;
-		mPrefilterMapHeapIndex++; //offset
+		mPrefilterMapSrvOffset++; //offset
 	}
 
+	int gbufferRtvOffset = prefilterRtvOffset;
+	//build mrt
+
+	//mRenderTarget0->BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mGBufferMapSrvOffset, mCbvSrvUavDescriptorSize),
+	//	CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mGBufferMapSrvOffset, mCbvSrvUavDescriptorSize));
+
+	mRenderTarget0->BuildDescriptors(
+		CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mShadowMapSrvOffset, mCbvSrvUavDescriptorSize),
+		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mShadowMapSrvOffset, mCbvSrvUavDescriptorSize),
+		CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, gbufferRtvOffset, mRtvDescriptorSize));
 
 }
 
 void MxRenderer::BuildRootSignature()
 {
 	//创建描述符表
-	CD3DX12_DESCRIPTOR_RANGE texTable[3];
+	CD3DX12_DESCRIPTOR_RANGE texTable[4];
 	texTable[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 100, 0); //bindless space0
 	texTable[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5, 0, 1); //t0 space1
 	texTable[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, gPrefilterLevel, 0, 2); //t0 space1
+	texTable[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 3); //t0 space1
 
 	//创建根参数，保存描述符表
-	CD3DX12_ROOT_PARAMETER slotRootParameter[7];
+	CD3DX12_ROOT_PARAMETER slotRootParameter[8];
 	slotRootParameter[0].InitAsConstantBufferView(0, 0); //pass b0
 	slotRootParameter[1].InitAsConstantBufferView(1, 0); //objconstant b1
 	slotRootParameter[2].InitAsConstantBufferView(2, 0); //b2
@@ -736,12 +749,13 @@ void MxRenderer::BuildRootSignature()
 	slotRootParameter[4].InitAsDescriptorTable(1, &texTable[1]); //tex
 	slotRootParameter[5].InitAsDescriptorTable(1, &texTable[2]); //tex
 	slotRootParameter[6].InitAsConstantBufferView(3, 0); 
+	slotRootParameter[7].InitAsDescriptorTable(1, &texTable[3]); //gbuffer
 
 	//获取采样器
 	auto staticSamplers = GetStaticSamplers();
 
 	//根签名描述结构
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(7, slotRootParameter,
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(8, slotRootParameter,
 		(UINT)staticSamplers.size(), staticSamplers.data(),
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 	//创建根签名
@@ -1492,6 +1506,40 @@ void MxRenderer::DrawPrefilterCubeMap()
 		}
 	}
 
+}
+
+void MxRenderer::DrawGBufferMap()
+{
+	mCommandList->RSSetViewports(1, &mRenderTarget0->Viewport());
+	mCommandList->RSSetScissorRects(1, &mRenderTarget0->ScissorRect());
+
+	// Change to DEPTH_WRITE.
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mRenderTarget0->Resource(),
+		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
+
+	// Clear the back buffer and depth buffer.
+	mCommandList->ClearRenderTargetView(mRenderTarget0->Rtv(), Colors::LightSteelBlue, 0, nullptr);
+	mCommandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+
+	// Set null render target because we are only going to draw to
+	// depth buffer.  Setting a null render target will disable color writes.
+	// Note the active PSO also must specify a render target count of 0.
+	mCommandList->OMSetRenderTargets(1, &mRenderTarget0->Rtv(), true, &DepthStencilView());
+
+	// Bind the pass constant buffer for the shadow map pass.
+	auto passCB = mCurrFrameResource->PassCB->Resource();
+	D3D12_GPU_VIRTUAL_ADDRESS passCBAddress = passCB->GetGPUVirtualAddress() + 1 * passCBByteSize;
+	mCommandList->SetGraphicsRootConstantBufferView(1, passCBAddress);
+
+	//绘制延迟pass几何信息
+	mCommandList->SetPipelineState(mPSOs["DeferredGeo"].Get());
+	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::DeferredGeo]);
+
+	// Change back to GENERIC_READ so we can read the texture in a shader.
+	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mRenderTarget0->Resource(),
+		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> MxRenderer::GetStaticSamplers()

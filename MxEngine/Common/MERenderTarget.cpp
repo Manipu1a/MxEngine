@@ -55,6 +55,24 @@ D3D12_RECT MERenderTarget::ScissorRect(UINT mipmap)
 	return { 0, 0, (int)newWidth, (int)newHeight };
 }
 
+void MERenderTarget::BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv, CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv)
+{
+	mhCpuSrv = hCpuSrv;
+	mhGpuSrv = hGpuSrv;
+
+	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
+	rtvHeapDesc.NumDescriptors = 1;
+	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	rtvHeapDesc.NodeMask = 0;
+	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
+		&rtvHeapDesc, IID_PPV_ARGS(mRtvHeap.GetAddressOf())));
+
+	mhCpuRtv = CD3DX12_CPU_DESCRIPTOR_HANDLE(mRtvHeap->GetCPUDescriptorHandleForHeapStart(), 0, md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+
+	BuildDescriptors();
+}
+
 void MERenderTarget::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv, CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv, CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuRtv)
 {
 	// Save references to the descriptors. 
@@ -71,9 +89,10 @@ void MERenderTarget::BuildDescriptors()
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.Format = mFormat;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.TextureCube.MostDetailedMip = 0;
-	srvDesc.TextureCube.MipLevels = mMipMap;
-	srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	srvDesc.Texture2D.MipLevels = 1;
+	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+	srvDesc.Texture2D.PlaneSlice = 0;
 
 	// Create SRV to the resource.
 	md3dDevice->CreateShaderResourceView(mResourceMap.Get(), &srvDesc, mhCpuSrv);
@@ -81,15 +100,8 @@ void MERenderTarget::BuildDescriptors()
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc;
 	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 	rtvDesc.Format = mFormat;
-	rtvDesc.Texture2DArray.MipSlice = 0;
-	rtvDesc.Texture2DArray.PlaneSlice = 0;
-
-	// Render target to ith element.
-	rtvDesc.Texture2DArray.FirstArraySlice = 0;
-
-	// Only view one element of the array.
-	rtvDesc.Texture2DArray.ArraySize = 1;
-
+	rtvDesc.Texture2D.MipSlice = 0;
+	rtvDesc.Texture2D.PlaneSlice = 0;
 	// Create RTV to ith cubemap face.
 	md3dDevice->CreateRenderTargetView(mResourceMap.Get(), &rtvDesc, mhCpuRtv);
 }

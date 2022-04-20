@@ -32,6 +32,9 @@ public:
 	D3D12_RECT ScissorRect()const;
 	D3D12_RECT ScissorRect(UINT mipmap);
 
+	void BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
+		CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv);
+
 	void BuildDescriptors(
 		CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
 		CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv,
@@ -64,4 +67,7 @@ protected:
 	CD3DX12_CPU_DESCRIPTOR_HANDLE mhCpuRtv;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> mResourceMap = nullptr;
+
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;
 };
