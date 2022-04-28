@@ -17,7 +17,7 @@ class MERenderTarget
 public:
 	MERenderTarget(ID3D12Device* device,
 		UINT width, UINT height,
-		DXGI_FORMAT format, UINT mipmap = 1);
+		DXGI_FORMAT format, UINT mipmap = 1, UINT RtNum = 1);
 
 	MERenderTarget(const MERenderTarget& rhs) = delete;
 	MERenderTarget& operator=(const MERenderTarget& rhs) = delete;
@@ -56,6 +56,7 @@ protected:
 	D3D12_VIEWPORT mViewport;
 	D3D12_RECT mScissorRect;
 
+	UINT mRTNum = 0;
 	UINT mWidth = 0;
 	UINT mHeight = 0;
 	UINT mMipMap = 1;
@@ -67,6 +68,7 @@ protected:
 	CD3DX12_CPU_DESCRIPTOR_HANDLE mhCpuRtv;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> mResourceMap = nullptr;
+	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> mResourceMaps;
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;

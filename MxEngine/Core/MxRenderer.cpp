@@ -45,7 +45,7 @@ bool MxRenderer::Initialize()
 			(UINT)(CubeMapSize / std::pow(2 , i)), (UINT)(CubeMapSize / std::pow(2, i)), DXGI_FORMAT_R8G8B8A8_UNORM);
 	}
 
-	mRenderTarget0 = std::make_unique<MERenderTarget>(md3dDevice.Get(), 2048, 2048, DXGI_FORMAT_R8G8B8A8_UNORM);
+	mRenderTarget0 = std::make_unique<MERenderTarget>(md3dDevice.Get(), mClientWidth, mClientHeight, DXGI_FORMAT_R8G8B8A8_UNORM,1,4);
 
 	LoadModel();
 	LoadTexture();
@@ -153,7 +153,16 @@ void MxRenderer::Draw(const GameTimer& gt)
 	DrawSceneToShadowMap();
 
 	DrawGBufferMap();
+	CD3DX12_GPU_DESCRIPTOR_HANDLE prefilterTexDescriptor = mPrefilterCubeMap[0]->Srv();
+	//prefilterTexDescriptor.Offset(mPrefilterMapHeapIndex, mCbvSrvUavDescriptorSize);
+	mCommandList->SetGraphicsRootDescriptorTable(5, prefilterTexDescriptor);
 
+	//pass数据以contant形式传入
+	auto passCB = mCurrFrameResource->PassCB->Resource();
+	mCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
+
+	mCommandList->RSSetViewports(1, &mScreenViewport);
+	mCommandList->RSSetScissorRects(1, &mScissorRect);
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
 		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
@@ -165,15 +174,9 @@ void MxRenderer::Draw(const GameTimer& gt)
 	// Specify the buffers we are going to render to.
 	mCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
 
-	CD3DX12_GPU_DESCRIPTOR_HANDLE prefilterTexDescriptor = mPrefilterCubeMap[0]->Srv();
-	//prefilterTexDescriptor.Offset(mPrefilterMapHeapIndex, mCbvSrvUavDescriptorSize);
-	mCommandList->SetGraphicsRootDescriptorTable(5, prefilterTexDescriptor);
-
-	//pass数据以contant形式传入
-	auto passCB = mCurrFrameResource->PassCB->Resource();
-	mCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
-	mCommandList->RSSetViewports(1, &mScreenViewport);
-	mCommandList->RSSetScissorRects(1, &mScissorRect);
+	CD3DX12_GPU_DESCRIPTOR_HANDLE gBufferDescriptor(mMaterialSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+	gBufferDescriptor.Offset(mGBufferMapSrvOffset, mCbvSrvUavDescriptorSize);
+	mCommandList->SetGraphicsRootDescriptorTable(7, gBufferDescriptor);
 
 	mCommandList->SetPipelineState(mPSOs["opaque"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
@@ -582,7 +585,7 @@ void MxRenderer::BuildDescriptorHeaps()
 		+1 //EnvCubeMap
 		+1 //IrradianceMap
 		+gPrefilterLevel //all level for prefilter
-		+ 1 //gbuffer 0
+		+ 4 //gbuffer
 		;
 
 	//each frame
@@ -721,13 +724,13 @@ void MxRenderer::BuileSourceBufferViews()
 	int gbufferRtvOffset = prefilterRtvOffset;
 	//build mrt
 
-	//mRenderTarget0->BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mGBufferMapSrvOffset, mCbvSrvUavDescriptorSize),
-	//	CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mGBufferMapSrvOffset, mCbvSrvUavDescriptorSize));
+	mRenderTarget0->BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mGBufferMapSrvOffset, mCbvSrvUavDescriptorSize),
+		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mGBufferMapSrvOffset, mCbvSrvUavDescriptorSize));
 
-	mRenderTarget0->BuildDescriptors(
-		CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mShadowMapSrvOffset, mCbvSrvUavDescriptorSize),
-		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mShadowMapSrvOffset, mCbvSrvUavDescriptorSize),
-		CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, gbufferRtvOffset, mRtvDescriptorSize));
+	//mRenderTarget0->BuildDescriptors(
+	//	CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mShadowMapSrvOffset, mCbvSrvUavDescriptorSize),
+	//	CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mShadowMapSrvOffset, mCbvSrvUavDescriptorSize),
+	//	CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, gbufferRtvOffset, mRtvDescriptorSize));
 
 }
 
@@ -737,8 +740,8 @@ void MxRenderer::BuildRootSignature()
 	CD3DX12_DESCRIPTOR_RANGE texTable[4];
 	texTable[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 100, 0); //bindless space0
 	texTable[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5, 0, 1); //t0 space1
-	texTable[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, gPrefilterLevel, 0, 2); //t0 space1
-	texTable[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 3); //t0 space1
+	texTable[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, gPrefilterLevel, 0, 2); //t0 space2
+	texTable[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 3); //t0 space3
 
 	//创建根参数，保存描述符表
 	CD3DX12_ROOT_PARAMETER slotRootParameter[8];
@@ -1106,7 +1109,7 @@ void MxRenderer::BuildRenderItems()
 	sphereRitem->StartIndexLocation = sphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
 	sphereRitem->BaseVertexLocation = sphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
 	mRitemLayer[(int)RenderLayer::Opaque].push_back(sphereRitem.get());
-	mRitemLayer[(int)RenderLayer::DeferredGeo].push_back(sphereRitem.get());
+	//mRitemLayer[(int)RenderLayer::DeferredGeo].push_back(sphereRitem.get());
 
 	mAllRitems.push_back(std::move(sphereRitem));
 
@@ -1122,6 +1125,7 @@ void MxRenderer::BuildRenderItems()
 	gridRitem->StartIndexLocation = gridRitem->Geo->DrawArgs["grid"].StartIndexLocation;
 	gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
 	mRitemLayer[(int)RenderLayer::Opaque].push_back(gridRitem.get());
+
 	mAllRitems.push_back(std::move(gridRitem));
 
 	auto skyRitem = std::make_unique<RenderItem>();
@@ -1213,7 +1217,7 @@ void MxRenderer::BuildRenderItems()
 		mAllRitems.push_back(std::move(sphereRitem));
 	}
 
-
+	mRitemLayer[(int)RenderLayer::DeferredGeo] = mRitemLayer[(int)RenderLayer::Opaque];
 }
 
 void MxRenderer::BuildCubeFaceCamera(float x, float y, float z)
@@ -1526,11 +1530,11 @@ void MxRenderer::DrawGBufferMap()
 	// Set null render target because we are only going to draw to
 	// depth buffer.  Setting a null render target will disable color writes.
 	// Note the active PSO also must specify a render target count of 0.
-	mCommandList->OMSetRenderTargets(1, &mRenderTarget0->Rtv(), true, &DepthStencilView());
+	mCommandList->OMSetRenderTargets(4, &mRenderTarget0->Rtv(), true, &DepthStencilView());
 
-	// Bind the pass constant buffer for the shadow map pass.
+	// Bind the pass constant buffer for the gbuffer pass.
 	auto passCB = mCurrFrameResource->PassCB->Resource();
-	D3D12_GPU_VIRTUAL_ADDRESS passCBAddress = passCB->GetGPUVirtualAddress() + 1 * passCBByteSize;
+	D3D12_GPU_VIRTUAL_ADDRESS passCBAddress = passCB->GetGPUVirtualAddress();
 	mCommandList->SetGraphicsRootConstantBufferView(1, passCBAddress);
 
 	//绘制延迟pass几何信息

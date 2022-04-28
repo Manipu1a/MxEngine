@@ -31,6 +31,7 @@ struct MRT
     float4 OutColor0 : COLOR0;
     float4 OutColor1 : COLOR1;
     float4 OutColor2 : COLOR2;
+    float4 OutColor3 : COLOR3;
 };
 
 VertexOut VS(VertexIn vin)
@@ -66,9 +67,10 @@ VertexOut VS(VertexIn vin)
 MRT PS(VertexOut pin) : SV_Target
 {
     MRT mrt;
-    mrt.OutColor0 = float4(1.0, 1.0, 0.0, 0.0);
+    mrt.OutColor0 = float4(1.0, 0.0, 0.0, 0.0);
     mrt.OutColor1 = float4(0.0, 1.0, 0.0, 0.0);
     mrt.OutColor2 = float4(0.0, 0.0, 1.0, 0.0);
+    mrt.OutColor3 = float4(1.0, 1.0, 1.0, 0.0);
     
     return mrt;
 }

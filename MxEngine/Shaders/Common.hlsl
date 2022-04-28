@@ -30,6 +30,8 @@ TextureCube gIrradianceMap : register(t4, space1);
 
 TextureCube gPrefilterMap[6] : register(t0, space2);
 
+Texture2D gBuffer0 : register(t0, space3);
+
 //StructuredBuffer<MaterialConstants> gMaterialData : register(t0, space1);
 
 SamplerState gsamPointWrap : register(s0);
