@@ -1,6 +1,6 @@
 #include "MERenderTarget.h"
 
-MERenderTarget::MERenderTarget(ID3D12Device* device, UINT width, UINT height, DXGI_FORMAT format, UINT mipmap /*= 1*/, UINT RtNum)
+MERenderTarget::MERenderTarget(ID3D12Device* device, UINT width, UINT height, DXGI_FORMAT format, UINT mipmap /*= 1*/, UINT RtNum) : MERenderTargetBase(device,width,height,format,mipmap,RtNum)
 {
 	md3dDevice = device;
 
@@ -16,44 +16,34 @@ MERenderTarget::MERenderTarget(ID3D12Device* device, UINT width, UINT height, DX
 	BuildResource();
 }
 
-ID3D12Resource* MERenderTarget::Resource()
+
+ID3D12Resource* MERenderTarget::Resource(UINT Index /*= 0*/)
 {
-	return mResourceMap.Get();
+	if (mResourceMaps.size() >= Index + 1)
+	{
+		return mResourceMaps[Index].Get();
+	}
+	return nullptr;
 }
 
-CD3DX12_GPU_DESCRIPTOR_HANDLE MERenderTarget::Srv()
+CD3DX12_GPU_DESCRIPTOR_HANDLE MERenderTarget::Srv(UINT Index /*= 0*/)
 {
+	if (Index + 1 <= mRTNum)
+	{
+		return CD3DX12_GPU_DESCRIPTOR_HANDLE(mhGpuSrv, Index, md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+	}
+
 	return mhGpuSrv;
 }
 
-CD3DX12_CPU_DESCRIPTOR_HANDLE MERenderTarget::Rtv()
+CD3DX12_CPU_DESCRIPTOR_HANDLE MERenderTarget::Rtv(UINT Index /*= 0*/)
 {
+	if (Index + 1 <= mRTNum)
+	{
+		return CD3DX12_CPU_DESCRIPTOR_HANDLE(mRtvHeap->GetCPUDescriptorHandleForHeapStart(), Index, md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+	}
+
 	return mhCpuRtv;
-}
-
-D3D12_VIEWPORT MERenderTarget::Viewport() const
-{
-	return mViewport;
-}
-
-D3D12_VIEWPORT MERenderTarget::Viewport(UINT mipmap)
-{
-	UINT newWidth = mWidth * std::pow(0.5, mipmap);
-	UINT newHeight = mHeight * std::pow(0.5, mipmap);
-
-	return { 0.0f, 0.0f, (float)newWidth, (float)newHeight, 0.0f, 1.0f };
-}
-
-D3D12_RECT MERenderTarget::ScissorRect() const
-{
-	return mScissorRect;
-}
-
-D3D12_RECT MERenderTarget::ScissorRect(UINT mipmap)
-{
-	UINT newWidth = mWidth * std::pow(0.5, mipmap);
-	UINT newHeight = mHeight * std::pow(0.5, mipmap);
-	return { 0, 0, (int)newWidth, (int)newHeight };
 }
 
 void MERenderTarget::BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv, CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv)
@@ -71,16 +61,6 @@ void MERenderTarget::BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv, CD
 
 	mhCpuRtv = CD3DX12_CPU_DESCRIPTOR_HANDLE(mRtvHeap->GetCPUDescriptorHandleForHeapStart(), 0, md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
 
-	BuildDescriptors();
-}
-
-void MERenderTarget::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv, CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv, CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuRtv)
-{
-	// Save references to the descriptors. 
-	mhCpuSrv = hCpuSrv;
-	mhGpuSrv = hGpuSrv;
-	mhCpuRtv = hCpuRtv;
-	//  Create the descriptors
 	BuildDescriptors();
 }
 
@@ -148,16 +128,21 @@ void MERenderTarget::BuildResource()
 	}
 }
 
-void MERenderTarget::OnResize(UINT newWidth, UINT newHeight)
+void MERenderTarget::RTTransition(ID3D12GraphicsCommandList* cmdList, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter)
 {
-	if ((mWidth != newWidth) || (mHeight != newHeight))
+	for (UINT i = 0; i < mResourceMaps.size(); i++)
 	{
-		mWidth = newWidth;
-		mHeight = newHeight;
-
-		BuildResource();
-
-		// New resource, so we need new descriptors to that resource.
-		BuildDescriptors();
+		cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mResourceMaps[i].Get(),
+			stateBefore, stateAfter));
 	}
 }
+
+void MERenderTarget::RTClearView(ID3D12GraphicsCommandList* cmdList, const FLOAT ColorRGBA[4], UINT NumRects, _In_reads_(NumRects) const D3D12_RECT* pRects)
+{
+	for (UINT i = 0; i < mRTNum; i++)
+	{
+		CD3DX12_CPU_DESCRIPTOR_HANDLE handle = CD3DX12_CPU_DESCRIPTOR_HANDLE(mRtvHeap->GetCPUDescriptorHandleForHeapStart(), i, md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+		cmdList->ClearRenderTargetView(handle, ColorRGBA, NumRects, pRects);
+	}
+}
+

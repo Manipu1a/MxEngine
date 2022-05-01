@@ -6,8 +6,8 @@
  
 MECubeRenderTarget::MECubeRenderTarget(ID3D12Device* device, 
 	                       UINT width, UINT height,
-                           DXGI_FORMAT format, UINT mipmap) 
-	: MERenderTarget(device, width, height, format, mipmap)
+                           DXGI_FORMAT format, UINT mipmap, UINT RtNum)
+	: MERenderTargetBase(device, width, height, format, mipmap, RtNum)
 {
 	md3dDevice = device;
 
@@ -21,46 +21,44 @@ MECubeRenderTarget::MECubeRenderTarget(ID3D12Device* device,
 
 	BuildResource();
 }
-//
-//ID3D12Resource*  CubeRenderTarget::Resource()
-//{
-//	return mCubeMap.Get();
-//}
-//
-//CD3DX12_GPU_DESCRIPTOR_HANDLE CubeRenderTarget::Srv()
-//{
-//	return mhGpuSrv;
-//}
-//
-CD3DX12_CPU_DESCRIPTOR_HANDLE MECubeRenderTarget::Rtv(int faceIndex)
+
+
+ID3D12Resource* MECubeRenderTarget::Resource(UINT Index /*= 0*/)
 {
-	return mhCpuRtv[faceIndex];
+	return mCubeMap.Get();
 }
-//
-//D3D12_VIEWPORT CubeRenderTarget::Viewport()const
-//{
-//	return mViewport;
-//}
-//
-//D3D12_VIEWPORT CubeRenderTarget::Viewport(UINT mipmap)
-//{
-//	UINT newWidth = mWidth * std::pow(0.5, mipmap);
-//	UINT newHeight = mHeight * std::pow(0.5, mipmap);
-//
-//	return { 0.0f, 0.0f, (float)newWidth, (float)newHeight, 0.0f, 1.0f };
-//}
-//
-//D3D12_RECT CubeRenderTarget::ScissorRect()const
-//{
-//	return mScissorRect;
-//}
-//
-//D3D12_RECT CubeRenderTarget::ScissorRect(UINT mipmap)
-//{
-//	UINT newWidth = mWidth * std::pow(0.5, mipmap);
-//	UINT newHeight = mHeight * std::pow(0.5, mipmap);
-//	return { 0, 0, (int)newWidth, (int)newHeight };
-//}
+
+CD3DX12_GPU_DESCRIPTOR_HANDLE MECubeRenderTarget::Srv(UINT Index /*= 0*/)
+{
+	return mhGpuSrv;
+}
+
+CD3DX12_CPU_DESCRIPTOR_HANDLE MECubeRenderTarget::Rtv(UINT Index /*= 0*/)
+{
+	return mhCpuRtv[Index];
+}
+
+void MECubeRenderTarget::BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv, CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv)
+{
+	mhCpuSrv = hCpuSrv;
+	mhGpuSrv = hGpuSrv;
+
+	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
+	rtvHeapDesc.NumDescriptors = 6;
+	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	rtvHeapDesc.NodeMask = 0;
+	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
+		&rtvHeapDesc, IID_PPV_ARGS(mRtvHeap.GetAddressOf())));
+
+	for (UINT i = 0; i < 6; i++)
+	{
+		mhCpuRtv[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(mRtvHeap->GetCPUDescriptorHandleForHeapStart(), i, md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+	}
+
+	BuildDescriptors();
+}
+
 
 void MECubeRenderTarget::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
 	                                CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv,
@@ -77,23 +75,10 @@ void MECubeRenderTarget::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
 	BuildDescriptors();
 }
 
-//
-//void CubeRenderTarget::OnResize(UINT newWidth, UINT newHeight)
-//{
-//	if((mWidth != newWidth) || (mHeight != newHeight))
-//	{
-//		mWidth = newWidth;
-//		mHeight = newHeight;
-//
-//		BuildResource();
-//
-//		// New resource, so we need new descriptors to that resource.
-//		BuildDescriptors();
-//	}
-//}
  
 void MECubeRenderTarget::BuildDescriptors()
 {
+
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.Format = mFormat;
@@ -103,7 +88,7 @@ void MECubeRenderTarget::BuildDescriptors()
 	srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
 
 	// Create SRV to the entire cubemap resource.
-	md3dDevice->CreateShaderResourceView(mResourceMap.Get(), &srvDesc, mhCpuSrv);
+	md3dDevice->CreateShaderResourceView(mCubeMap.Get(), &srvDesc, mhCpuSrv);
 
 	// Create RTV to each cube face.
 	for(int i = 0; i < 6; ++i)
@@ -121,7 +106,7 @@ void MECubeRenderTarget::BuildDescriptors()
 		rtvDesc.Texture2DArray.ArraySize = 1;
 
 		// Create RTV to ith cubemap face.
-		md3dDevice->CreateRenderTargetView(mResourceMap.Get(), &rtvDesc, mhCpuRtv[i]);
+		md3dDevice->CreateRenderTargetView(mCubeMap.Get(), &rtvDesc, mhCpuRtv[i]);
 	}
 }
 
@@ -153,5 +138,20 @@ void MECubeRenderTarget::BuildResource()
 		&texDesc,
 		D3D12_RESOURCE_STATE_GENERIC_READ,
 		nullptr,
-		IID_PPV_ARGS(&mResourceMap)));
+		IID_PPV_ARGS(&mCubeMap)));
+}
+
+void MECubeRenderTarget::RTTransition(ID3D12GraphicsCommandList* cmdList, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter)
+{
+	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mCubeMap.Get(),
+		stateBefore, stateAfter));
+}
+
+void MECubeRenderTarget::RTClearView(ID3D12GraphicsCommandList* cmdList, const FLOAT ColorRGBA[4], UINT NumRects, _In_reads_(NumRects) const D3D12_RECT* pRects)
+{
+	for (UINT i = 0; i < mRTNum; i++)
+	{
+		CD3DX12_CPU_DESCRIPTOR_HANDLE handle = CD3DX12_CPU_DESCRIPTOR_HANDLE(mRtvHeap->GetCPUDescriptorHandleForHeapStart(), i, md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV));
+		cmdList->ClearRenderTargetView(handle, ColorRGBA, NumRects, pRects);
+	}
 }

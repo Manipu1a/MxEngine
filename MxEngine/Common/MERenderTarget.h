@@ -9,10 +9,10 @@
     *  @brief    : RenderTarget 
 **************************************************************************/
 #pragma once
-#include "d3dUtil.h"
+#include "MERenderTargetBase.h"
 
 
-class MERenderTarget
+class MERenderTarget : public MERenderTargetBase
 {
 public:
 	MERenderTarget(ID3D12Device* device,
@@ -23,51 +23,28 @@ public:
 	MERenderTarget& operator=(const MERenderTarget& rhs) = delete;
 	virtual ~MERenderTarget() = default;
 
-	ID3D12Resource* Resource();
-	CD3DX12_GPU_DESCRIPTOR_HANDLE Srv();
-	CD3DX12_CPU_DESCRIPTOR_HANDLE Rtv();
+	virtual ID3D12Resource* Resource(UINT Index = 0) override;
 
-	D3D12_VIEWPORT Viewport()const;
-	D3D12_VIEWPORT Viewport(UINT mipmap);
-	D3D12_RECT ScissorRect()const;
-	D3D12_RECT ScissorRect(UINT mipmap);
+	virtual CD3DX12_GPU_DESCRIPTOR_HANDLE Srv(UINT Index = 0) override;
 
-	void BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
-		CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv);
+	virtual CD3DX12_CPU_DESCRIPTOR_HANDLE Rtv(UINT Index = 0) override;
 
+	virtual void BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
+		CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv) override;
+
+	/*
 	void BuildDescriptors(
 		CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
 		CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv,
 		CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuRtv);
+		*/
+	virtual void BuildDescriptors() override;
+	virtual void BuildResource() override;
 
-	virtual void BuildDescriptors();
-	virtual void BuildResource();
-
-
-	void OnResize(UINT newWidth, UINT newHeight);
-
-	inline UINT GetWidth() { return mWidth; }
-	inline UINT GetHeight() { return mHeight; }
-
-
+	virtual void RTTransition(ID3D12GraphicsCommandList* cmdList, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter) override;
+	virtual void RTClearView(ID3D12GraphicsCommandList* cmdList, const FLOAT ColorRGBA[4], UINT NumRects, _In_reads_(NumRects) const D3D12_RECT* pRects) override;
 protected:
-	ID3D12Device* md3dDevice = nullptr;
 
-	D3D12_VIEWPORT mViewport;
-	D3D12_RECT mScissorRect;
-
-	UINT mRTNum = 0;
-	UINT mWidth = 0;
-	UINT mHeight = 0;
-	UINT mMipMap = 1;
-
-	DXGI_FORMAT mFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-
-	CD3DX12_CPU_DESCRIPTOR_HANDLE mhCpuSrv;
-	CD3DX12_GPU_DESCRIPTOR_HANDLE mhGpuSrv;
-	CD3DX12_CPU_DESCRIPTOR_HANDLE mhCpuRtv;
-
-	Microsoft::WRL::ComPtr<ID3D12Resource> mResourceMap = nullptr;
 	std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> mResourceMaps;
 
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;

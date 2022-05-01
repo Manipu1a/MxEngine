@@ -1,11 +1,14 @@
 #include "MxRenderer.h"
 #include "../Common/GeometryGenerator.h"
 #include "../Common/LoadTexture/Resource.h"
+#include "../Common/MECubeRenderTarget.h"
+#include "../Common/MERenderTarget.h"
 
 //#define CGLTF_IMPLEMENTATION
 const int gNumFrameResources = 3;
 const int gPrefilterLevel = 6;
 const UINT CubeMapSize = 512;
+
 MxRenderer::MxRenderer(HINSTANCE hInstance): D3DApp(hInstance)
 {
 	mSceneBounds.Center = XMFLOAT3(0.0f, 0.0f, 0.0f);
@@ -45,7 +48,7 @@ bool MxRenderer::Initialize()
 			(UINT)(CubeMapSize / std::pow(2 , i)), (UINT)(CubeMapSize / std::pow(2, i)), DXGI_FORMAT_R8G8B8A8_UNORM);
 	}
 
-	mRenderTarget0 = std::make_unique<MERenderTarget>(md3dDevice.Get(), mClientWidth, mClientHeight, DXGI_FORMAT_R8G8B8A8_UNORM,1,4);
+	mGBufferMRT = std::make_unique<MERenderTarget>(md3dDevice.Get(), mClientWidth, mClientHeight, DXGI_FORMAT_R8G8B8A8_UNORM,1,4);
 
 	LoadModel();
 	LoadTexture();
@@ -248,7 +251,7 @@ void MxRenderer::CreateRtvAndDsvDescriptorHeaps()
 {
 	// Add +6 RTV for cube render target.
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
-	rtvHeapDesc.NumDescriptors = SwapChainBufferCount + 12 + 6 * gPrefilterLevel + 1;
+	rtvHeapDesc.NumDescriptors = SwapChainBufferCount + /*12 + 6 * gPrefilterLevel*/ + 1;
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	rtvHeapDesc.NodeMask = 0;
@@ -681,41 +684,48 @@ void MxRenderer::BuileSourceBufferViews()
 	int rtvOffset = SwapChainBufferCount;
 	int irradianceOffset = rtvOffset + 6;
 
+	//CD3DX12_CPU_DESCRIPTOR_HANDLE cubeRtvHandles[6];
+	//for (int i = 0; i < 6; ++i)
+	//	cubeRtvHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, rtvOffset + i, mRtvDescriptorSize);
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE cubeRtvHandles[6];
-	for (int i = 0; i < 6; ++i)
-		cubeRtvHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, rtvOffset + i, mRtvDescriptorSize);
+	//mEnvCubeMap->BuildDescriptors(
+	//	CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mEnvCubeMapSrvOffset, mCbvSrvUavDescriptorSize),
+	//	CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mEnvCubeMapSrvOffset, mCbvSrvUavDescriptorSize),
+	//	cubeRtvHandles
+	//);
 
-	mEnvCubeMap->BuildDescriptors(
-		CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mEnvCubeMapSrvOffset, mCbvSrvUavDescriptorSize),
-		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mEnvCubeMapSrvOffset, mCbvSrvUavDescriptorSize),
-		cubeRtvHandles
-		);
+	mEnvCubeMap->BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mEnvCubeMapSrvOffset, mCbvSrvUavDescriptorSize),
+		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mEnvCubeMapSrvOffset, mCbvSrvUavDescriptorSize));
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE irradiancecubeRtvHandles[6];
-	for (int i = 0; i < 6; ++i)
-		irradiancecubeRtvHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, irradianceOffset + i, mRtvDescriptorSize);
+	//CD3DX12_CPU_DESCRIPTOR_HANDLE irradiancecubeRtvHandles[6];
+	//for (int i = 0; i < 6; ++i)
+	//	irradiancecubeRtvHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, irradianceOffset + i, mRtvDescriptorSize);
 
-	mIrradianceCubeMap->BuildDescriptors(
-		CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mIrradianceMapSrvOffset, mCbvSrvUavDescriptorSize),
-		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mIrradianceMapSrvOffset, mCbvSrvUavDescriptorSize),
-		irradiancecubeRtvHandles
-	);
+	//mIrradianceCubeMap->BuildDescriptors(
+	//	CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mIrradianceMapSrvOffset, mCbvSrvUavDescriptorSize),
+	//	CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mIrradianceMapSrvOffset, mCbvSrvUavDescriptorSize),
+	//	irradiancecubeRtvHandles
+	//);
+
+	mIrradianceCubeMap->BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mIrradianceMapSrvOffset, mCbvSrvUavDescriptorSize),
+		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mIrradianceMapSrvOffset, mCbvSrvUavDescriptorSize));
 
 	int prefilterRtvOffset = irradianceOffset + 6;
 	for (int i = 0; i < gPrefilterLevel; ++i)
 	{
-		CD3DX12_CPU_DESCRIPTOR_HANDLE prefilterRtvHandles[6];
-		for (int j = 0; j < 6; ++j)
-		{
-			prefilterRtvHandles[j] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, prefilterRtvOffset + j, mRtvDescriptorSize);
-		}
+		//CD3DX12_CPU_DESCRIPTOR_HANDLE prefilterRtvHandles[6];
+		//for (int j = 0; j < 6; ++j)
+		//{
+		//	prefilterRtvHandles[j] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, prefilterRtvOffset + j, mRtvDescriptorSize);
+		//}
 
-		mPrefilterCubeMap[i]->BuildDescriptors(
-			CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mPrefilterMapSrvOffset, mCbvSrvUavDescriptorSize),
-			CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mPrefilterMapSrvOffset, mCbvSrvUavDescriptorSize),
-			prefilterRtvHandles
-		);
+		//mPrefilterCubeMap[i]->BuildDescriptors(
+		//	CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mPrefilterMapSrvOffset, mCbvSrvUavDescriptorSize),
+		//	CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mPrefilterMapSrvOffset, mCbvSrvUavDescriptorSize),
+		//	prefilterRtvHandles
+		//);
+		mPrefilterCubeMap[i]->BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mPrefilterMapSrvOffset, mCbvSrvUavDescriptorSize),
+			CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mPrefilterMapSrvOffset, mCbvSrvUavDescriptorSize));
 
 		prefilterRtvOffset += 6;
 		mPrefilterMapSrvOffset++; //offset
@@ -724,7 +734,7 @@ void MxRenderer::BuileSourceBufferViews()
 	int gbufferRtvOffset = prefilterRtvOffset;
 	//build mrt
 
-	mRenderTarget0->BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mGBufferMapSrvOffset, mCbvSrvUavDescriptorSize),
+	mGBufferMRT->BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mGBufferMapSrvOffset, mCbvSrvUavDescriptorSize),
 		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mGBufferMapSrvOffset, mCbvSrvUavDescriptorSize));
 
 	//mRenderTarget0->BuildDescriptors(
@@ -1397,8 +1407,9 @@ void MxRenderer::DrawSceneToCubeMap()
 	mCommandList->RSSetScissorRects(1, &mEnvCubeMap->ScissorRect());
 
 	// Change to RENDER_TARGET.
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mEnvCubeMap->Resource(),
-		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	//mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mEnvCubeMap->Resource(),
+	//	D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	mEnvCubeMap->RTTransition(mCommandList.Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
 
@@ -1427,8 +1438,10 @@ void MxRenderer::DrawSceneToCubeMap()
 	}
 
 	// Change back to GENERIC_READ so we can read the texture in a shader.
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mEnvCubeMap->Resource(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+	//mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mEnvCubeMap->Resource(),
+	//	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+	mEnvCubeMap->RTTransition(mCommandList.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ);
+
 }
 
 void MxRenderer::DrawIrradianceCubeMap()
@@ -1437,8 +1450,9 @@ void MxRenderer::DrawIrradianceCubeMap()
 	mCommandList->RSSetScissorRects(1, &mIrradianceCubeMap->ScissorRect());
 
 	// Change to RENDER_TARGET.
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mIrradianceCubeMap->Resource(),
-		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	//mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mIrradianceCubeMap->Resource(),
+	//	D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	mIrradianceCubeMap->RTTransition(mCommandList.Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
 
@@ -1464,8 +1478,10 @@ void MxRenderer::DrawIrradianceCubeMap()
 	}
 
 	// Change back to GENERIC_READ so we can read the texture in a shader.
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mIrradianceCubeMap->Resource(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+	//mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mIrradianceCubeMap->Resource(),
+	//	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+	mIrradianceCubeMap->RTTransition(mCommandList.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ);
+
 }
 
 void MxRenderer::DrawPrefilterCubeMap()
@@ -1482,8 +1498,9 @@ void MxRenderer::DrawPrefilterCubeMap()
 			mCommandList->RSSetScissorRects(1, &mPrefilterCubeMap[i]->ScissorRect());
 
 			// Change to RENDER_TARGET.
-			mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mPrefilterCubeMap[i]->Resource(),
-				D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+			//mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mPrefilterCubeMap[i]->Resource(),
+			//	D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+			mPrefilterCubeMap[i]->RTTransition(mCommandList.Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 			// Clear the back buffer and depth buffer.
 			mCommandList->ClearRenderTargetView(mPrefilterCubeMap[i]->Rtv(j), Colors::LightSteelBlue, 0, nullptr);
@@ -1505,8 +1522,10 @@ void MxRenderer::DrawPrefilterCubeMap()
 			DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Sky]);
 
 			// Change back to GENERIC_READ so we can read the texture in a shader.
-			mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mPrefilterCubeMap[i]->Resource(),
-				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+			//mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mPrefilterCubeMap[i]->Resource(),
+			//	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+			mPrefilterCubeMap[i]->RTTransition(mCommandList.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ);
+
 		}
 	}
 
@@ -1514,23 +1533,28 @@ void MxRenderer::DrawPrefilterCubeMap()
 
 void MxRenderer::DrawGBufferMap()
 {
-	mCommandList->RSSetViewports(1, &mRenderTarget0->Viewport());
-	mCommandList->RSSetScissorRects(1, &mRenderTarget0->ScissorRect());
+	mCommandList->RSSetViewports(1, &mGBufferMRT->Viewport());
+	mCommandList->RSSetScissorRects(1, &mGBufferMRT->ScissorRect());
 
-	// Change to DEPTH_WRITE.
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mRenderTarget0->Resource(),
-		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	// Change state.
+	//mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mRenderTarget0->Resource(),
+	//	D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+	mGBufferMRT->RTTransition(mCommandList.Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
 
 	// Clear the back buffer and depth buffer.
-	mCommandList->ClearRenderTargetView(mRenderTarget0->Rtv(), Colors::LightSteelBlue, 0, nullptr);
+	//mCommandList->ClearRenderTargetView(mRenderTarget0->Rtv(0), Colors::LightSteelBlue, 0, nullptr);
+
+	mGBufferMRT->RTClearView(mCommandList.Get(), Colors::LightSteelBlue, 0, nullptr);
+
 	mCommandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
 	// Set null render target because we are only going to draw to
 	// depth buffer.  Setting a null render target will disable color writes.
 	// Note the active PSO also must specify a render target count of 0.
-	mCommandList->OMSetRenderTargets(4, &mRenderTarget0->Rtv(), true, &DepthStencilView());
+	mCommandList->OMSetRenderTargets(4, &mGBufferMRT->Rtv(), true, &DepthStencilView());
 
 	// Bind the pass constant buffer for the gbuffer pass.
 	auto passCB = mCurrFrameResource->PassCB->Resource();
@@ -1542,8 +1566,10 @@ void MxRenderer::DrawGBufferMap()
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::DeferredGeo]);
 
 	// Change back to GENERIC_READ so we can read the texture in a shader.
-	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mRenderTarget0->Resource(),
-		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+	//mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mRenderTarget0->Resource(),
+	//	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+	mGBufferMRT->RTTransition(mCommandList.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ);
+
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> MxRenderer::GetStaticSamplers()

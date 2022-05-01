@@ -13,7 +13,10 @@
 #include "../Common/Camera.h"
 #include "../Common/EngineConfig.h"
 #include "../Common/ShadowMap.h"
-#include "../Common/MECubeRenderTarget.h"
+
+class MERenderTarget;
+class MECubeRenderTarget;
+
 
 
 using Microsoft::WRL::ComPtr;
@@ -128,7 +131,7 @@ private:
 	DirectX::BoundingSphere mSceneBounds;
 
 	//MRT
-	std::unique_ptr<MERenderTarget> mRenderTarget0;
+	std::unique_ptr<MERenderTarget> mGBufferMRT;
 
 	//LightData
 	float mLightNearZ = 0.0f;
