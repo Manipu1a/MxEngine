@@ -15,6 +15,8 @@
 #include "../imgui/imgui_impl_win32.h"
 #include "../imgui/imgui_impl_dx12.h"
 
+class MEGui;
+
 // Link necessary d3d12 libraries.
 #pragma comment(lib,"d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
@@ -136,6 +138,8 @@ protected:
 	int mClientWidth = 1280;
 	int mClientHeight = 800;
 
+
+	std::unique_ptr<MEGui> Gui;
 
 	//ืสิด
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;

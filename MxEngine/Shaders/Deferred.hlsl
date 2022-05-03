@@ -67,10 +67,34 @@ VertexOut VS(VertexIn vin)
 MRT PS(VertexOut pin) : SV_Target
 {
     MRT mrt;
-    mrt.OutColor0 = float4(1.0, 0.0, 0.0, 0.0);
-    mrt.OutColor1 = float4(0.0, 1.0, 0.0, 0.0);
+    mrt.OutColor0 = float4(1.0, 0.0, 0.0, 0.0); //basecolor
+    mrt.OutColor1 = float4(0.0, 1.0, 0.0, 0.0); //normal
     mrt.OutColor2 = float4(0.0, 0.0, 1.0, 0.0);
     mrt.OutColor3 = float4(1.0, 1.0, 1.0, 0.0);
+
+    float3 basecolor = DiffuseAlbedo.rgb;
+    
+    if (AlbedoMapIndex != -1)
+    {
+        basecolor = MaterialTex[AlbedoMapIndex].Sample(gsamLinearWrap, pin.TexC).rgb;
+    }
+    
+    
+    float3 N = normalize(pin.NormalW);
+    float3 B = cross(N, pin.Tangent);
+    float3x3 TBN = float3x3(pin.Tangent, B, N);
+    float3 normal = pin.NormalW;
+    if (NormalMapIndex != -1)
+    {
+         // 从法线贴图范围[0,1]获取法线
+        normal = MaterialTex[NormalMapIndex].Sample(gsamLinearWrap, pin.TexC).rgb;
+        // 将法线向量转换为范围[-1,1]
+        normal = mul(normalize(normal * 2.0 - 1.0), TBN);
+    }
+    
+    mrt.OutColor0.rgb = basecolor;
+    mrt.OutColor1.rgb = normal;
+    
     
     return mrt;
 }

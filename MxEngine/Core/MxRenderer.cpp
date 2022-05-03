@@ -3,6 +3,7 @@
 #include "../Common/LoadTexture/Resource.h"
 #include "../Common/MECubeRenderTarget.h"
 #include "../Common/MERenderTarget.h"
+#include "../Common/MEGui.h"
 
 //#define CGLTF_IMPLEMENTATION
 const int gNumFrameResources = 3;
@@ -49,6 +50,8 @@ bool MxRenderer::Initialize()
 	}
 
 	mGBufferMRT = std::make_unique<MERenderTarget>(md3dDevice.Get(), mClientWidth, mClientHeight, DXGI_FORMAT_R8G8B8A8_UNORM,1,4);
+
+	Gui = std::make_unique<MEGui>();
 
 	LoadModel();
 	LoadTexture();
@@ -190,38 +193,9 @@ void MxRenderer::Draw(const GameTimer& gt)
 	mCommandList->SetPipelineState(mPSOs["sky"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Sky]);
 
-	{
-		// Start the Dear ImGui frame
-		ImGui_ImplDX12_NewFrame();
-		ImGui_ImplWin32_NewFrame();
-		ImGui::NewFrame();
-		bool show_demo_window = true;
+	Gui->tick_pre();
 
-		ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-		// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-		if (show_demo_window)
-		{
-			static float fx = 0.0f;
-			static float fy = 0.0f;
-			static float fz = 0.0f;
-
-			ImGui::Begin("GUI");
-			ImGui::Text("Control Dir Light.");
-			ImGui::SliderFloat("floatx", &DirectLightX, -1.0f, 1.0f);
-			ImGui::SliderFloat("floaty", &DirectLightY, -1.0f, 1.0f);
-			ImGui::SliderFloat("floatz", &DirectLightZ, -1.0f, 10.0f);
-
-			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-			ImGui::End();
-		}
-
-		// Rendering
-		ImGui::Render();
-
-		ID3D12DescriptorHeap* GuidescriptorHeaps[] = { mGuiSrvDescriptorHeap.Get() };
-		mCommandList->SetDescriptorHeaps(1, GuidescriptorHeaps);
-		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), mCommandList.Get());
-	}
+	Gui->draw_frame();
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
@@ -620,29 +594,30 @@ void MxRenderer::BuildDescriptorHeaps()
 		IID_PPV_ARGS(&mMaterialSrvDescriptorHeap)));
 
 
-	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	desc.NumDescriptors = 1;
-	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	desc.NodeMask = 0;
-	if (md3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&mGuiSrvDescriptorHeap)) != S_OK)
-		return;
+	Gui->Initialize(md3dDevice.Get(), mhMainWnd);
+	//D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+	//desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	//desc.NumDescriptors = 1;
+	//desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	//desc.NodeMask = 0;
+	//if (md3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&mGuiSrvDescriptorHeap)) != S_OK)
+	//	return;
 
-	//初始化GUI
-	// 
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	////初始化GUI
+	//// 
+	//IMGUI_CHECKVERSION();
+	//ImGui::CreateContext();
+	//ImGuiIO& io = ImGui::GetIO(); (void)io;
 
-	// Setup Dear ImGui style
-	ImGui::StyleColorsDark();
+	//// Setup Dear ImGui style
+	//ImGui::StyleColorsDark();
 
-	// Setup Platform/Renderer backends
-	ImGui_ImplWin32_Init(mhMainWnd);
-	ImGui_ImplDX12_Init(md3dDevice.Get(), gNumFrameResources,
-		DXGI_FORMAT_R8G8B8A8_UNORM, mGuiSrvDescriptorHeap.Get(),
-		mGuiSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
-		mGuiSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+	//// Setup Platform/Renderer backends
+	//ImGui_ImplWin32_Init(mhMainWnd);
+	//ImGui_ImplDX12_Init(md3dDevice.Get(), gNumFrameResources,
+	//	DXGI_FORMAT_R8G8B8A8_UNORM, mGuiSrvDescriptorHeap.Get(),
+	//	mGuiSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+	//	mGuiSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
 }
 

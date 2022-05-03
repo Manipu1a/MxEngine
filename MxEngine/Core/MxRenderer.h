@@ -18,7 +18,6 @@ class MERenderTarget;
 class MECubeRenderTarget;
 
 
-
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace DirectX::PackedVector;
@@ -93,7 +92,6 @@ private:
 	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 	ComPtr<ID3D12DescriptorHeap> mCbvHeap = nullptr;
 
-	ComPtr<ID3D12DescriptorHeap> mGuiSrvDescriptorHeap = nullptr;
 	ComPtr<ID3D12DescriptorHeap> mGlobalSrvDescriptorHeap = nullptr;
 	ComPtr<ID3D12DescriptorHeap> mMaterialSrvDescriptorHeap = nullptr;
 
@@ -125,6 +123,7 @@ private:
 	Camera mCamera;
 	Camera mLightCamera;
 	Camera mCubeMapCamera[6];
+
 
 	//shadow
 	std::unique_ptr<ShadowMap> mShadowMap;

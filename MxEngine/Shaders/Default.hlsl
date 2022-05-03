@@ -66,12 +66,6 @@ float4 PS(VertexOut pin) : SV_Target
     float3 B = cross(N, pin.Tangent);
     float3x3 TBN = float3x3(pin.Tangent, B, N);
     
-    //float3 TangentViewPos = mul(gEyePosW, TBN);
-    //float3 TangentFragPos = mul(pin.PosW, TBN);
-    //float3 ViewDir = normalize(TangentViewPos - TangentFragPos);
-    //float2 texCoords = ParallaxMapping(pin.TexC, ViewDir);
-    //pin.TexC = texCoords;
-    
     if (NormalMapIndex != -1)
     {
          // 从法线贴图范围[0,1]获取法线

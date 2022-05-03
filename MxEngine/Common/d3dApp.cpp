@@ -4,6 +4,7 @@
 
 #include "d3dApp.h"
 #include <WindowsX.h>
+#include "MEGui.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace std;
@@ -36,21 +37,7 @@ D3DApp::~D3DApp()
 	if(md3dDevice != nullptr)
 		FlushCommandQueue();
 
-	// Cleanup
-	ImGui_ImplDX12_Shutdown();
-	ImGui_ImplWin32_Shutdown();
-	ImGui::DestroyContext();
-	//mSwapChain->Release();
-	//md3dDevice->Release();
-	//mdxgiFactory->Release();
-	//mCommandQueue->Release();
-	//mDirectCmdListAlloc->Release();
-	//mCommandList->Release();
-	//mSwapChainBuffer->ReleaseAndGetAddressOf();
-	//mDepthStencilBuffer->Release();
-	//mRtvHeap->Release();
-	//mDsvHeap->Release();
-
+	Gui->clear();
 }
 
 HINSTANCE D3DApp::AppInst()const
