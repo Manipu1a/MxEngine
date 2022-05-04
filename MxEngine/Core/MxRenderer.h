@@ -14,8 +14,8 @@
 #include "../Common/EngineConfig.h"
 #include "../Common/ShadowMap.h"
 
-class MERenderTarget;
-class MECubeRenderTarget;
+class MxRenderTarget;
+class MxCubeRenderTarget;
 
 
 using Microsoft::WRL::ComPtr;
@@ -130,7 +130,7 @@ private:
 	DirectX::BoundingSphere mSceneBounds;
 
 	//MRT
-	std::unique_ptr<MERenderTarget> mGBufferMRT;
+	std::unique_ptr<MxRenderTarget> mGBufferMRT;
 
 	//LightData
 	float mLightNearZ = 0.0f;
@@ -149,9 +149,9 @@ private:
 	XMMATRIX captureProjection;
 	XMMATRIX captureViews[6];
 
-	std::unique_ptr<MECubeRenderTarget> mEnvCubeMap = nullptr;
-	std::unique_ptr<MECubeRenderTarget> mIrradianceCubeMap = nullptr;
-	std::map<int, std::unique_ptr<MECubeRenderTarget>> mPrefilterCubeMap;
+	std::unique_ptr<MxCubeRenderTarget> mEnvCubeMap = nullptr;
+	std::unique_ptr<MxCubeRenderTarget> mIrradianceCubeMap = nullptr;
+	std::map<int, std::unique_ptr<MxCubeRenderTarget>> mPrefilterCubeMap;
 	std::map<int, ComPtr<ID3D12Resource>> mPrefilterDepthStencilBuffers;
 	std::unique_ptr<UploadBuffer<PrefilterConstants>> PrefilterCB = nullptr;
 

@@ -3,7 +3,7 @@
 //***************************************************************************************
 
 #pragma once
-#include "MERenderTargetBase.h"
+#include "MxRenderTargetBase.h"
 
 
 enum class CubeMapFace : int
@@ -16,16 +16,16 @@ enum class CubeMapFace : int
 	NegativeZ = 5
 };
 
-class MECubeRenderTarget : public MERenderTargetBase
+class MxCubeRenderTarget : public MxRenderTargetBase
 {
 public:
-	MECubeRenderTarget(ID3D12Device* device,
+	MxCubeRenderTarget(ID3D12Device* device,
 		UINT width, UINT height,
 		DXGI_FORMAT format,UINT mipmap = 1, UINT RtNum = 6);
 		
-	MECubeRenderTarget(const MECubeRenderTarget& rhs)=delete;
-	MECubeRenderTarget& operator=(const MECubeRenderTarget& rhs)=delete;
-	virtual ~MECubeRenderTarget()=default;
+	MxCubeRenderTarget(const MxCubeRenderTarget& rhs)=delete;
+	MxCubeRenderTarget& operator=(const MxCubeRenderTarget& rhs)=delete;
+	virtual ~MxCubeRenderTarget()=default;
 
 	virtual ID3D12Resource* Resource(UINT Index = 0) override;
 

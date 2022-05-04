@@ -2,12 +2,12 @@
 // CubeRenderTarget.cpp by Frank Luna (C) 2011 All Rights Reserved.
 //***************************************************************************************
 
-#include "MECubeRenderTarget.h"
+#include "MxCubeRenderTarget.h"
  
-MECubeRenderTarget::MECubeRenderTarget(ID3D12Device* device, 
+MxCubeRenderTarget::MxCubeRenderTarget(ID3D12Device* device, 
 	                       UINT width, UINT height,
                            DXGI_FORMAT format, UINT mipmap, UINT RtNum)
-	: MERenderTargetBase(device, width, height, format, mipmap, RtNum)
+	: MxRenderTargetBase(device, width, height, format, mipmap, RtNum)
 {
 	md3dDevice = device;
 
@@ -23,22 +23,22 @@ MECubeRenderTarget::MECubeRenderTarget(ID3D12Device* device,
 }
 
 
-ID3D12Resource* MECubeRenderTarget::Resource(UINT Index /*= 0*/)
+ID3D12Resource* MxCubeRenderTarget::Resource(UINT Index /*= 0*/)
 {
 	return mCubeMap.Get();
 }
 
-CD3DX12_GPU_DESCRIPTOR_HANDLE MECubeRenderTarget::Srv(UINT Index /*= 0*/)
+CD3DX12_GPU_DESCRIPTOR_HANDLE MxCubeRenderTarget::Srv(UINT Index /*= 0*/)
 {
 	return mhGpuSrv;
 }
 
-CD3DX12_CPU_DESCRIPTOR_HANDLE MECubeRenderTarget::Rtv(UINT Index /*= 0*/)
+CD3DX12_CPU_DESCRIPTOR_HANDLE MxCubeRenderTarget::Rtv(UINT Index /*= 0*/)
 {
 	return mhCpuRtv[Index];
 }
 
-void MECubeRenderTarget::BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv, CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv)
+void MxCubeRenderTarget::BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv, CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv)
 {
 	mhCpuSrv = hCpuSrv;
 	mhGpuSrv = hGpuSrv;
@@ -60,7 +60,7 @@ void MECubeRenderTarget::BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv
 }
 
 
-void MECubeRenderTarget::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
+void MxCubeRenderTarget::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
 	                                CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv,
 	                                CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuRtv[6])
 {
@@ -76,7 +76,7 @@ void MECubeRenderTarget::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
 }
 
  
-void MECubeRenderTarget::BuildDescriptors()
+void MxCubeRenderTarget::BuildDescriptors()
 {
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -110,7 +110,7 @@ void MECubeRenderTarget::BuildDescriptors()
 	}
 }
 
-void MECubeRenderTarget::BuildResource()
+void MxCubeRenderTarget::BuildResource()
 {
 	// Note, compressed formats cannot be used for UAV.  We get error like:
 	// ERROR: ID3D11Device::CreateTexture2D: The format (0x4d, BC3_UNORM) 
@@ -141,13 +141,13 @@ void MECubeRenderTarget::BuildResource()
 		IID_PPV_ARGS(&mCubeMap)));
 }
 
-void MECubeRenderTarget::RTTransition(ID3D12GraphicsCommandList* cmdList, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter)
+void MxCubeRenderTarget::RTTransition(ID3D12GraphicsCommandList* cmdList, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter)
 {
 	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mCubeMap.Get(),
 		stateBefore, stateAfter));
 }
 
-void MECubeRenderTarget::RTClearView(ID3D12GraphicsCommandList* cmdList, const FLOAT ColorRGBA[4], UINT NumRects, _In_reads_(NumRects) const D3D12_RECT* pRects)
+void MxCubeRenderTarget::RTClearView(ID3D12GraphicsCommandList* cmdList, const FLOAT ColorRGBA[4], UINT NumRects, _In_reads_(NumRects) const D3D12_RECT* pRects)
 {
 	for (UINT i = 0; i < mRTNum; i++)
 	{

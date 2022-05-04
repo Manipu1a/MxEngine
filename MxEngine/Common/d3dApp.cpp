@@ -4,7 +4,7 @@
 
 #include "d3dApp.h"
 #include <WindowsX.h>
-#include "MEGui.h"
+#include "MxGui.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace std;

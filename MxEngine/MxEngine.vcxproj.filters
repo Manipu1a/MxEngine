@@ -78,7 +78,7 @@
     <ClInclude Include="Common\ShadowMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Common\MECubeRenderTarget.h">
+    <ClInclude Include="Common\MxCubeRenderTarget.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imgui.h">
@@ -111,13 +111,22 @@
     <ClInclude Include="cgltf\cgltf.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Common\MERenderTarget.h">
+    <ClInclude Include="Common\MxRenderTarget.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Common\MERenderTargetBase.h">
+    <ClInclude Include="Common\MxRenderTargetBase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Common\MEGui.h">
+    <ClInclude Include="Common\MxGui.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\MxObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\MxLevel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\MxWorld.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -161,7 +170,7 @@
     <ClCompile Include="Common\ShadowMap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Common\MECubeRenderTarget.cpp">
+    <ClCompile Include="Common\MxCubeRenderTarget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="imgui\imgui.cpp">
@@ -185,13 +194,22 @@
     <ClCompile Include="imgui\imgui_widgets.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Common\MERenderTarget.cpp">
+    <ClCompile Include="Common\MxRenderTarget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Common\MERenderTargetBase.cpp">
+    <ClCompile Include="Common\MxGui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Common\MEGui.cpp">
+    <ClCompile Include="Common\MxObject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\MxLevel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\MxWorld.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\MxRenderTargetBase.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

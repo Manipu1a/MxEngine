@@ -9,19 +9,19 @@
     *  @brief    : RenderTarget 
 **************************************************************************/
 #pragma once
-#include "MERenderTargetBase.h"
+#include "MxRenderTargetBase.h"
 
 
-class MERenderTarget : public MERenderTargetBase
+class MxRenderTarget : public MxRenderTargetBase
 {
 public:
-	MERenderTarget(ID3D12Device* device,
+	MxRenderTarget(ID3D12Device* device,
 		UINT width, UINT height,
 		DXGI_FORMAT format, UINT mipmap = 1, UINT RtNum = 1);
 
-	MERenderTarget(const MERenderTarget& rhs) = delete;
-	MERenderTarget& operator=(const MERenderTarget& rhs) = delete;
-	virtual ~MERenderTarget() = default;
+	MxRenderTarget(const MxRenderTarget& rhs) = delete;
+	MxRenderTarget& operator=(const MxRenderTarget& rhs) = delete;
+	virtual ~MxRenderTarget() = default;
 
 	virtual ID3D12Resource* Resource(UINT Index = 0) override;
 

@@ -1,9 +1,9 @@
 #include "MxRenderer.h"
 #include "../Common/GeometryGenerator.h"
 #include "../Common/LoadTexture/Resource.h"
-#include "../Common/MECubeRenderTarget.h"
-#include "../Common/MERenderTarget.h"
-#include "../Common/MEGui.h"
+#include "../Common/MxCubeRenderTarget.h"
+#include "../Common/MxRenderTarget.h"
+#include "../Common/MxGui.h"
 
 //#define CGLTF_IMPLEMENTATION
 const int gNumFrameResources = 3;
@@ -35,23 +35,23 @@ bool MxRenderer::Initialize()
 	mShadowMap = std::make_unique<ShadowMap>(
 		md3dDevice.Get(), 2048, 2048);
 
-	mEnvCubeMap = std::make_unique<MECubeRenderTarget>(md3dDevice.Get(),
+	mEnvCubeMap = std::make_unique<MxCubeRenderTarget>(md3dDevice.Get(),
 		CubeMapSize, CubeMapSize, DXGI_FORMAT_R8G8B8A8_UNORM);
 
-	mIrradianceCubeMap = std::make_unique<MECubeRenderTarget>(md3dDevice.Get(),
+	mIrradianceCubeMap = std::make_unique<MxCubeRenderTarget>(md3dDevice.Get(),
 		CubeMapSize, CubeMapSize, DXGI_FORMAT_R8G8B8A8_UNORM);
 
 	PrefilterCB = std::make_unique<UploadBuffer<PrefilterConstants>>(md3dDevice.Get(), gPrefilterLevel, true);
 
 	for (int i = 0; i < gPrefilterLevel; ++i)
 	{
-		mPrefilterCubeMap[i] = std::make_unique<MECubeRenderTarget>(md3dDevice.Get(),
+		mPrefilterCubeMap[i] = std::make_unique<MxCubeRenderTarget>(md3dDevice.Get(),
 			(UINT)(CubeMapSize / std::pow(2 , i)), (UINT)(CubeMapSize / std::pow(2, i)), DXGI_FORMAT_R8G8B8A8_UNORM);
 	}
 
-	mGBufferMRT = std::make_unique<MERenderTarget>(md3dDevice.Get(), mClientWidth, mClientHeight, DXGI_FORMAT_R8G8B8A8_UNORM,1,4);
+	mGBufferMRT = std::make_unique<MxRenderTarget>(md3dDevice.Get(), mClientWidth, mClientHeight, DXGI_FORMAT_R8G8B8A8_UNORM,1,4);
 
-	Gui = std::make_unique<MEGui>();
+	Gui = std::make_unique<MxGui>();
 
 	LoadModel();
 	LoadTexture();

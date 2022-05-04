@@ -13,18 +13,18 @@
 #include "d3dUtil.h"
 
 
-class MERenderTargetBase
+class MxRenderTargetBase
 {
 public:
-	MERenderTargetBase(ID3D12Device* device,
+	MxRenderTargetBase(ID3D12Device* device,
 		UINT width, UINT height,
 		DXGI_FORMAT format, UINT mipmap = 1, UINT RtNum = 1)
 	{
 	};
 
-	MERenderTargetBase(const MERenderTargetBase& rhs) = delete;
-	MERenderTargetBase& operator=(const MERenderTargetBase& rhs) = delete;
-	virtual ~MERenderTargetBase() = default;
+	MxRenderTargetBase(const MxRenderTargetBase& rhs) = delete;
+	MxRenderTargetBase& operator=(const MxRenderTargetBase& rhs) = delete;
+	virtual ~MxRenderTargetBase() = default;
 
 	virtual ID3D12Resource* Resource(UINT resourceIndex = 0) = 0;
 

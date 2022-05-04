@@ -2,7 +2,7 @@
 //
 
 #include "main.h"
-#include "Core/MxRenderer.h"
+#include "Core/MxWorld.h"
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 	PSTR cmdLine, int showCmd)
@@ -14,13 +14,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 
     try
     {
-        MxRenderer Renderer(hInstance);
-        if (!Renderer.Initialize())
-        {
-            return 0;
-        }
-
-        return Renderer.Run();
+        MxWorld World(hInstance);
+        World.Initialize();
+        return World.Run();
     }
     catch (DxException& e)
     {

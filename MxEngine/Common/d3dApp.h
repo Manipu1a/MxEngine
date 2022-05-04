@@ -15,7 +15,7 @@
 #include "../imgui/imgui_impl_win32.h"
 #include "../imgui/imgui_impl_dx12.h"
 
-class MEGui;
+class MxGui;
 
 // Link necessary d3d12 libraries.
 #pragma comment(lib,"d3dcompiler.lib")
@@ -139,7 +139,7 @@ protected:
 	int mClientHeight = 800;
 
 
-	std::unique_ptr<MEGui> Gui;
+	std::unique_ptr<MxGui> Gui;
 
 	//ืสิด
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;

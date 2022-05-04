@@ -11,10 +11,10 @@
 #pragma once
 #include "d3dApp.h"
 
-class MEGui
+class MxGui
 {
 public:
-    MEGui() {}
+    MxGui() {}
     void Initialize(ID3D12Device* device, HWND& winHandle);
     void tick_pre();
     void onTick();

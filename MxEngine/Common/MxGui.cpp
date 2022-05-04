@@ -1,7 +1,7 @@
-#include "MEGui.h"
+#include "MxGui.h"
 #include "d3dApp.h"
 
-void MEGui::Initialize(ID3D12Device* device, HWND& winHandle)
+void MxGui::Initialize(ID3D12Device* device, HWND& winHandle)
 {
 	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -28,7 +28,7 @@ void MEGui::Initialize(ID3D12Device* device, HWND& winHandle)
 		mGuiSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 }
 
-void MEGui::tick_pre()
+void MxGui::tick_pre()
 {
 	{
 		// Start the Dear ImGui frame
@@ -39,7 +39,7 @@ void MEGui::tick_pre()
 	}
 }
 
-void MEGui::onTick()
+void MxGui::onTick()
 {
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -63,12 +63,12 @@ void MEGui::onTick()
 	}
 }
 
-void MEGui::tick_post()
+void MxGui::tick_post()
 {
 
 }
 
-void MEGui::draw_frame()
+void MxGui::draw_frame()
 {
 	// Rendering
 	ImGui::Render();
@@ -79,7 +79,7 @@ void MEGui::draw_frame()
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 }
 
-void MEGui::clear()
+void MxGui::clear()
 {
 	// Cleanup
 	ImGui_ImplDX12_Shutdown();

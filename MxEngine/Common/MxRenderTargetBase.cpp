@@ -1,6 +1,6 @@
-#include "MERenderTargetBase.h"
+#include "MxRenderTargetBase.h"
 
-void MERenderTargetBase::OnResize(UINT newWidth, UINT newHeight)
+void MxRenderTargetBase::OnResize(UINT newWidth, UINT newHeight)
 {
 	if ((mWidth != newWidth) || (mHeight != newHeight))
 	{
