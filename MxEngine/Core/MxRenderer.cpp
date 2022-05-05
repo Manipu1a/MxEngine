@@ -4,6 +4,9 @@
 #include "../Common/MxCubeRenderTarget.h"
 #include "../Common/MxRenderTarget.h"
 #include "../Common/MxGui.h"
+#include "MxWorld.h"
+#include "MxLevel.h"
+#include "MxRenderComponent.h"
 
 //#define CGLTF_IMPLEMENTATION
 const int gNumFrameResources = 3;
@@ -1095,7 +1098,6 @@ void MxRenderer::BuildRenderItems()
 	sphereRitem->BaseVertexLocation = sphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
 	mRitemLayer[(int)RenderLayer::Opaque].push_back(sphereRitem.get());
 	//mRitemLayer[(int)RenderLayer::DeferredGeo].push_back(sphereRitem.get());
-
 	mAllRitems.push_back(std::move(sphereRitem));
 
 	auto gridRitem = std::make_unique<RenderItem>();
@@ -1201,6 +1203,26 @@ void MxRenderer::BuildRenderItems()
 		mRitemLayer[(int)RenderLayer::Opaque].push_back(sphereRitem.get());
 		mAllRitems.push_back(std::move(sphereRitem));
 	}
+
+
+	//level items
+	for (auto& object : MxWorld::GetWorld()->GetMainLevel()->LevelObjectsMap)
+	{
+		
+		auto levelRitem = std::make_unique<RenderItem>();
+		XMStoreFloat4x4(&levelRitem->World, XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixTranslation(0.0f, 30.0f, 0.0f));
+		XMStoreFloat4x4(&levelRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
+		levelRitem->ObjCBIndex = offset++;
+		levelRitem->Mat = mMaterials[object.second->RenderComponent->mMaterial->Name].get();
+		levelRitem->Geo = object.second->RenderComponent->mGeometrie.get();
+		levelRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+		levelRitem->IndexCount = sphereRitem->Geo->DrawArgs["sphere"].IndexCount;
+		levelRitem->StartIndexLocation = levelRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
+		levelRitem->BaseVertexLocation = levelRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+		mRitemLayer[(int)RenderLayer::Opaque].push_back(levelRitem.get());
+		mAllRitems.push_back(std::move(levelRitem));
+	}
+
 
 	mRitemLayer[(int)RenderLayer::DeferredGeo] = mRitemLayer[(int)RenderLayer::Opaque];
 }
@@ -1787,6 +1809,13 @@ void MxRenderer::BuildMaterial()
 	modelMat->SpecularStrength = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 	modelMat->Ao = 1.0f;
 	mMaterials[modelMat->Name] = std::move(modelMat);
+
+	for (auto& object : MxWorld::GetWorld()->GetMainLevel()->LevelObjectsMap)
+	{
+		auto material = object.second->RenderComponent->mMaterial;
+		material->MatCBIndex = matIndex++;
+		mMaterials[material->Name] = std::move(material);
+	}
 }
 
 void MxRenderer::LoadModel()

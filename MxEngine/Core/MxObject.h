@@ -9,15 +9,23 @@
     *  @date     : 2022/05/04 10:01 
     *  @brief    : Object 
 **************************************************************************/
-#include "d3dApp.h"
+
+#include "../Common/d3dApp.h"
+
+class MxRenderComponent;
 
 class MxObject
 {
 public:
-    MxObject(const std::string& name, UINT id);
+    MxObject();
+	MxObject(const std::string& name);
 
-public:
 
+    XMFLOAT3 Location;
+    XMFLOAT3 Rotation;
+    XMFLOAT3 Scale;
+
+    std::shared_ptr<MxRenderComponent> RenderComponent;
     std::string ObjectName;
     UINT ObjectID;
 };

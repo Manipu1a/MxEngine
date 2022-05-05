@@ -1,6 +1,6 @@
 #include "MxWorld.h"
 #include "MxRenderer.h"
-#include "../Common/MxLevel.h"
+#include "MxLevel.h"
 
 MxWorld* MxWorld::mWorld = nullptr;
 
@@ -24,8 +24,14 @@ MxWorld* MxWorld::GetWorld()
 	return mWorld;
 }
 
+MxLevel* MxWorld::GetMainLevel()
+{
+	return Level.get();
+}
+
 void MxWorld::Initialize()
 {
+	Level->CreateLevelContent();
 	Renderer->Initialize();
 }
 

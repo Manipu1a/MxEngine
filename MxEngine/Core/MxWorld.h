@@ -21,6 +21,7 @@ public:
     ~MxWorld();
 
     static MxWorld* GetWorld();
+    MxLevel* GetMainLevel();
 
     void Initialize();
     int Run();
