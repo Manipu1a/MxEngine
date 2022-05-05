@@ -16,7 +16,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
     {
         MxWorld World(hInstance);
         World.Initialize();
-        return World.Run();
+        return World.TickWorld();
     }
     catch (DxException& e)
     {

@@ -1,5 +1,6 @@
 #include "MxGui.h"
 #include "d3dApp.h"
+#include "../Core/MxWorld.h"
 
 void MxGui::Initialize(ID3D12Device* device, HWND& winHandle)
 {
@@ -11,7 +12,7 @@ void MxGui::Initialize(ID3D12Device* device, HWND& winHandle)
 	if (device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&mGuiSrvDescriptorHeap)) != S_OK)
 		return;
 
-	//³õÊ¼»¯GUI
+	//åˆå§‹åŒ–GUI
 	// 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -57,8 +58,8 @@ void MxGui::onTick()
 		//ImGui::SliderFloat("floatx", &DirectLightX, -1.0f, 1.0f);
 		//ImGui::SliderFloat("floaty", &DirectLightY, -1.0f, 1.0f);
 		//ImGui::SliderFloat("floatz", &DirectLightZ, -1.0f, 10.0f);
-
-		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		
+		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / MxWorld::GetWorld()->GetFPS(), MxWorld::GetWorld()->GetFPS());
 		ImGui::End();
 	}
 }

@@ -7,7 +7,7 @@
  
     *  @author   : Haro 
     *  @date     : 2022/05/04 10:52 
-    *  @brief    : ÊÀ½ç 
+    *  @brief    : ï¿½ï¿½ï¿½ï¿½ 
 **************************************************************************/
 #include "../Common/d3dApp.h"
 
@@ -24,8 +24,20 @@ public:
 
     void Initialize();
     int Run();
+    int TickWorld();
+
+    inline float GetFPS() {return FPS;}
+    
 private:
     static MxWorld* mWorld;
+
+    void CalculateFrameStats();
+
+    float FPS;
+    float MSPF;
+    
+    GameTimer mTimer;
+    bool      mAppPaused = false;  // is the application paused?
     
     std::unique_ptr<MxLevel> Level;
     std::unique_ptr<MxRenderer> Renderer;

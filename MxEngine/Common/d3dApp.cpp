@@ -363,6 +363,12 @@ void D3DApp::SaveTexturePath(const std::string& name, std::wstring& path)
 	MaterialTex.insert({ name, path});
 }
 
+void D3DApp::TickRenderer(const GameTimer& gt)
+{
+	Update(gt);
+	Draw(gt);
+}
+
 bool D3DApp::InitMainWindow()
 {
 	WNDCLASS wc;

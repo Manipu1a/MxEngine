@@ -7,7 +7,7 @@
  
     *  @author   : Haro 
     *  @date     : 2022/05/04 10:18 
-    *  @brief    : ³¡¾°¹ÜÀíÆ÷ 
+    *  @brief    : åœºæ™¯ç®¡ç†å™¨ 
 **************************************************************************/
 #include "d3dApp.h"
 #include "MxObject.h"
@@ -18,6 +18,7 @@ public:
     MxLevel();
 
     UINT AddObject(MxObject& object);
+    
 public:
 
     static UINT GlobalIDManager;

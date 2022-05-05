@@ -50,10 +50,12 @@ public:
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return mCommandList; }
 
 	
-	//存入模型资源
+	//瀛樺偍璧勬簮
 	void SaveMesh(std::unique_ptr<MeshGeometry>& mgo);
 	void SaveTexturePath(const std::string& name, std::wstring& path);
 
+	void TickRenderer(const GameTimer& gt);
+	
 protected:
     virtual void CreateRtvAndDsvDescriptorHeaps();
 	virtual void OnResize(); 
@@ -100,7 +102,7 @@ protected:
     bool      m4xMsaaState = false;    // 4X MSAA enabled
     UINT      m4xMsaaQuality = 0;      // quality level of 4X MSAA
 
-	// Used to keep track of the 揹elta-time?and game time (?.4).
+	// Used to keep track of the 鈥渄elta-time?and game time (?.4).
 	GameTimer mTimer;
 	
     Microsoft::WRL::ComPtr<IDXGIFactory4> mdxgiFactory;
@@ -141,7 +143,7 @@ protected:
 
 	std::unique_ptr<MxGui> Gui;
 
-	//资源
+	//脳脢脭麓
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>> mShaders;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12PipelineState>> mPSOs;
