@@ -2,23 +2,23 @@
 
 #include <d3d12.h>
 #include<DirectXMath.h>
+#include <DirectXCollision.h>
 #include<iostream>
 #include<string>
 #include<vector>
 #include<map>
-
-using namespace::DirectX;
-using namespace::std;
+#include "MathHelper.h"
+#include <unordered_map>
 
 extern const int gNumFrameResources;
 
 struct VertexPCNTT
 {
-	XMFLOAT3 pos;
-	XMFLOAT3 color;
-	XMFLOAT3 normal;
-	XMFLOAT3 tangent;
-	XMFLOAT2 uv;
+	DirectX::XMFLOAT3 pos;
+	DirectX::XMFLOAT3 color;
+	DirectX::XMFLOAT3 normal;
+	DirectX::XMFLOAT3 tangent;
+	DirectX::XMFLOAT2 uv;
 };
 
 struct Triangle
@@ -41,10 +41,10 @@ struct Texture {
 
 struct MaterialTexFileName
 {
-	string diffuseMapFileName;
-	string specularMapFileName;
-	string alphaMapFileName;
-	string bumpMapFileName;
+	std::string diffuseMapFileName;
+	std::string specularMapFileName;
+	std::string alphaMapFileName;
+	std::string bumpMapFileName;
 };
 
 // Simple struct to represent a material for our demos.  A production 3D engine
@@ -89,10 +89,10 @@ struct Material
 
 struct MeshData
 {
-	string Name;
+	std::string Name;
 
-	vector<VertexPCNTT> mVertexData;
-	vector<WORD> mIndexData;
+	std::vector<VertexPCNTT> mVertexData;
+	std::vector<WORD> mIndexData;
 	int materialId;
 
 	std::shared_ptr<Material> mMatPtr;
@@ -143,31 +143,31 @@ struct MeshData
 //临时的FBX模型数据
 struct MemFBXModelData
 {
-	vector<Triangle> mTriangleData;
-	map<int, MaterialTexFileName> mMaterialMap;
+	std::vector<Triangle> mTriangleData;
+	std::map<int, MaterialTexFileName> mMaterialMap;
 };
 
 
 //FBX一个节点解析出多个MeshData，也就是一个Model
 struct ModelData
 {
-	vector<MeshData> mMeshList;
-	map<int, MaterialTexFileName> mMaterialMap;
+	std::vector<MeshData> mMeshList;
+	std::map<int, MaterialTexFileName> mMaterialMap;
 };
 
 //保证了一个FBX加载的所有纹理文件都仅仅加载一次
 //一个FBX文件可以解析出n个ModelData
 struct FBXModelData
 {
-	vector<ModelData> mModelList;
+	std::vector<ModelData> mModelList;
 
 };
 
 struct Transform
 {
-	XMFLOAT3 localPosition = XMFLOAT3(1.0f, 1.0f, 1.0f);
-	XMFLOAT3 localScale = XMFLOAT3(1.0f, 1.0f, 1.0f);
-	XMFLOAT3 localRotation = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	DirectX::XMFLOAT3 localPosition = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+	DirectX::XMFLOAT3 localScale = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+	DirectX::XMFLOAT3 localRotation = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
 };
 
 

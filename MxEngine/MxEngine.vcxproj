@@ -148,7 +148,6 @@
     <ClInclude Include="Common\CommonVertexFormat.h" />
     <ClInclude Include="Common\EngineConfiguration.h" />
     <ClInclude Include="Common\MxCubeRenderTarget.h" />
-    <ClInclude Include="Common\d3dApp.h" />
     <ClInclude Include="Common\d3dUtil.h" />
     <ClInclude Include="Common\d3dx12.h" />
     <ClInclude Include="Common\EngineConfig.h" />
@@ -191,7 +190,6 @@
     <ClCompile Include="Common\BaseApplication.cpp" />
     <ClCompile Include="Common\Camera.cpp" />
     <ClCompile Include="Common\MxCubeRenderTarget.cpp" />
-    <ClCompile Include="Common\d3dApp.cpp" />
     <ClCompile Include="Common\d3dUtil.cpp" />
     <ClCompile Include="Common\FrameResource.cpp" />
     <ClCompile Include="Common\GameTimer.cpp" />

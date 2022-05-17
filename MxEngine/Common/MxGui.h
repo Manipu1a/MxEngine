@@ -9,8 +9,10 @@
     *  @brief    : ui 
 **************************************************************************/
 #pragma once
-#include "d3dApp.h"
+#include "../Core/MxRenderer.h"
 
+namespace MxEngine
+{
 class MxGui
 {
 public:
@@ -26,3 +28,4 @@ public:
 
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mGuiSrvDescriptorHeap = nullptr;
 };
+}

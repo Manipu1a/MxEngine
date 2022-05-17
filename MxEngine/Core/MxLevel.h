@@ -9,18 +9,21 @@
     *  @date     : 2022/05/04 10:18 
     *  @brief    : ≥°æ∞π‹¿Ì∆˜ 
 **************************************************************************/
-#include "../Common/d3dApp.h"
+#include "../Core/MxRenderer.h"
 #include "MxObject.h"
 
-class MxLevel
+namespace MxEngine
 {
-public:
-    MxLevel();
+	class MxLevel
+	{
+	public:
+		MxLevel();
 
-    void CreateLevelContent();
-    UINT AddObject(MxObject& object);
-public:
+		void CreateLevelContent();
+		UINT AddObject(MxObject& object);
+	public:
 
-    static UINT GlobalIDManager;
-    std::unordered_map<UINT, std::shared_ptr<MxObject>> LevelObjectsMap;
-};
+		static UINT GlobalIDManager;
+		std::unordered_map<UINT, std::shared_ptr<MxObject>> LevelObjectsMap;
+	};
+}

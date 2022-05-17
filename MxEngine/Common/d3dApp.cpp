@@ -37,7 +37,7 @@ D3DApp::~D3DApp()
 	if(md3dDevice != nullptr)
 		FlushCommandQueue();
 
-	Gui->clear();
+	//Gui->clear();
 }
 
 HINSTANCE D3DApp::AppInst()const

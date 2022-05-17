@@ -4,8 +4,13 @@
 // Render Module
 // 
 //***************************************************************************************
+#include "../Common/d3dUtil.h"
+#include "../Common/GameTimer.h"
+#include "../imgui/imgui.h"
+#include "../imgui/imgui_impl_win32.h"
+#include "../imgui/imgui_impl_dx12.h"
 
-#include "../Common/d3dApp.h"
+
 #include "../Common/MathHelper.h"
 #include "../Common/UploadBuffer.h"
 #include "../Common/MxRes.h"
@@ -14,14 +19,23 @@
 #include "../Common/EngineConfig.h"
 #include "../Common/ShadowMap.h"
 
-class MxRenderTarget;
-class MxCubeRenderTarget;
+// Link necessary d3d12 libraries.
+#pragma comment(lib,"d3dcompiler.lib")
+#pragma comment(lib, "D3D12.lib")
+#pragma comment(lib, "dxgi.lib")
 
 
-using Microsoft::WRL::ComPtr;
-using namespace DirectX;
-using namespace DirectX::PackedVector;
 
+namespace MxEngine
+{
+	class MxGui;
+	class MxRenderTarget;
+	class MxCubeRenderTarget;
+
+
+	using Microsoft::WRL::ComPtr;
+	using namespace DirectX;
+	using namespace DirectX::PackedVector;
 
 class MxRenderer
 {
@@ -34,6 +48,19 @@ public:
 	bool Initialize();
 	void Tick(const GameTimer& gt);
 	
+
+	HINSTANCE AppInst()const;
+	HWND      MainWnd()const;
+	float     AspectRatio()const;
+	static MxRenderer* GetRenderer();
+	ComPtr<ID3D12Device> GetDevice() { return md3dDevice; }
+	ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return mCommandList; }
+
+
+	//存储资源
+	void SaveMesh(std::unique_ptr<MeshGeometry>& mgo);
+	void SaveTexturePath(const std::string& name, std::wstring& path);
+
 private:
 	void OnResize();
 	void Update(const GameTimer& gt);
@@ -98,15 +125,8 @@ private:
 	void BuildMaterial();
 	void LoadModel();
 
-	HINSTANCE AppInst()const;
-	HWND      MainWnd()const;
-	float     AspectRatio()const;
-	static MxRenderer* GetRenderer();
-	ComPtr<ID3D12Device> GetDevice() { return md3dDevice; }
-	ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return mCommandList; }
 protected:
 	static MxRenderer* mRenderer;
-
 	
 private:
 	HINSTANCE mhAppInst = nullptr; // application instance handle
@@ -149,7 +169,7 @@ private:
 	bool      m4xMsaaState = false;    // 4X MSAA enabled
 	UINT      m4xMsaaQuality = 0;      // quality level of 4X MSAA
 	
-	std::unique_ptr<MxGui> Gui;
+	std::unique_ptr<MxEngine::MxGui> Gui;
 	
 	//
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
@@ -250,3 +270,4 @@ private:
 
 	bool PrePass = false;
 };
+}

@@ -13,7 +13,16 @@ const int gNumFrameResources = 3;
 const int gPrefilterLevel = 6;
 const UINT CubeMapSize = 512;
 
-MxRenderer::MxRenderer(HINSTANCE hInstance,HWND hWnd)
+namespace MxEngine
+{
+	MxRenderer* MxRenderer::mRenderer = nullptr;
+	MxRenderer* MxRenderer::GetRenderer()
+	{
+		return mRenderer;
+	}
+}
+
+MxEngine::MxRenderer::MxRenderer(HINSTANCE hInstance,HWND hWnd)
 {
 	mhAppInst = hInstance;
 	mhMainWnd = hWnd;
@@ -22,23 +31,16 @@ MxRenderer::MxRenderer(HINSTANCE hInstance,HWND hWnd)
 	mSceneBounds.Radius = 60.0;
 }
 
-MxRenderer::~MxRenderer()
+MxEngine::MxRenderer::~MxRenderer()
 {
 	if(md3dDevice != nullptr)
 		FlushCommandQueue();
 
 	Gui->clear();
-
-}
-
-MxRenderer* MxRenderer::mRenderer = nullptr;
-MxRenderer* MxRenderer::GetRenderer()
-{
-	return mRenderer;
 }
 
 
-bool MxRenderer::Initialize()
+bool MxEngine::MxRenderer::Initialize()
 {
 	if(!InitDirect3D())
 		return false;
@@ -99,13 +101,23 @@ bool MxRenderer::Initialize()
 	return true;
 }
 
-void MxRenderer::Tick(const GameTimer& gt)
+void MxEngine::MxRenderer::SaveMesh(std::unique_ptr<MeshGeometry>& mgo)
+{
+	mGeometries[mgo->Name] = std::move(mgo);
+}
+
+void MxEngine::MxRenderer::SaveTexturePath(const std::string& name, std::wstring& path)
+{
+	MaterialTex.insert({ name, path });
+}
+
+void MxEngine::MxRenderer::Tick(const GameTimer& gt)
 {
 	Update(gt);
 	Draw(gt);
 }
 
-void MxRenderer::OnResize()
+void MxEngine::MxRenderer::OnResize()
 {
 	assert(md3dDevice);
 	assert(mSwapChain);
@@ -193,7 +205,7 @@ void MxRenderer::OnResize()
 	mLightCamera.SetLens(0.25f * MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
 }
 
-void MxRenderer::Update(const GameTimer& gt)
+void MxEngine::MxRenderer::Update(const GameTimer& gt)
 {
 	OnKeyboardInput(gt);
 	//UpdateCamera(gt);
@@ -220,11 +232,9 @@ void MxRenderer::Update(const GameTimer& gt)
 	UpdateMaterialCBs(gt);
 	UpdateShadowTransform(gt);
 	UpdateShadowPassCB(gt);
-
-
 }
 
-void MxRenderer::Draw(const GameTimer& gt)
+void MxEngine::MxRenderer::Draw(const GameTimer& gt)
 {
 	//mCommandList->Close();
 	auto cmdListAlloc = mCurrFrameResource->CmdListAlloc;
@@ -326,7 +336,7 @@ void MxRenderer::Draw(const GameTimer& gt)
 	mCommandQueue->Signal(mFence.Get(), mCurrentFence);
 }
 
-void MxRenderer::CreateRtvAndDsvDescriptorHeaps()
+void MxEngine::MxRenderer::CreateRtvAndDsvDescriptorHeaps()
 {
 	// Add +6 RTV for cube render target.
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
@@ -358,7 +368,7 @@ void MxRenderer::CreateRtvAndDsvDescriptorHeaps()
 
 }
 
-bool MxRenderer::InitDirect3D()
+bool MxEngine::MxRenderer::InitDirect3D()
 {
 	#if defined(DEBUG) || defined(_DEBUG) 
 	// Enable the D3D12 debug layer.
@@ -424,7 +434,7 @@ bool MxRenderer::InitDirect3D()
 	return true;
 }
 
-void MxRenderer::CreateCommandObjects()
+void MxEngine::MxRenderer::CreateCommandObjects()
 {
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -448,7 +458,7 @@ void MxRenderer::CreateCommandObjects()
 	mCommandList->Close();
 }
 
-void MxRenderer::CreateSwapChain()
+void MxEngine::MxRenderer::CreateSwapChain()
 {
 	// Release the previous swapchain we will be recreating.
 	mSwapChain.Reset();
@@ -477,7 +487,7 @@ void MxRenderer::CreateSwapChain()
 		mSwapChain.GetAddressOf()));
 }
 
-void MxRenderer::FlushCommandQueue()
+void MxEngine::MxRenderer::FlushCommandQueue()
 {
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrentFence++;
@@ -501,12 +511,12 @@ void MxRenderer::FlushCommandQueue()
 	}
 }
 
-ID3D12Resource* MxRenderer::CurrentBackBuffer() const
+ID3D12Resource* MxEngine::MxRenderer::CurrentBackBuffer() const
 {
 	return mSwapChainBuffer[mCurrBackBuffer].Get();
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE MxRenderer::CurrentBackBufferView() const
+D3D12_CPU_DESCRIPTOR_HANDLE MxEngine::MxRenderer::CurrentBackBufferView() const
 {
 	return CD3DX12_CPU_DESCRIPTOR_HANDLE(
 		mRtvHeap->GetCPUDescriptorHandleForHeapStart(),
@@ -514,12 +524,12 @@ D3D12_CPU_DESCRIPTOR_HANDLE MxRenderer::CurrentBackBufferView() const
 		mRtvDescriptorSize);
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE MxRenderer::DepthStencilView() const
+D3D12_CPU_DESCRIPTOR_HANDLE MxEngine::MxRenderer::DepthStencilView() const
 {
 	return mDsvHeap->GetCPUDescriptorHandleForHeapStart();
 }
 
-void MxRenderer::LogAdapters()
+void MxEngine::MxRenderer::LogAdapters()
 {
 	UINT i = 0;
 	IDXGIAdapter* adapter = nullptr;
@@ -547,7 +557,7 @@ void MxRenderer::LogAdapters()
 	}
 }
 
-void MxRenderer::LogAdapterOutputs(IDXGIAdapter* adapter)
+void MxEngine::MxRenderer::LogAdapterOutputs(IDXGIAdapter* adapter)
 {
 	UINT i = 0;
 	IDXGIOutput* output = nullptr;
@@ -569,7 +579,7 @@ void MxRenderer::LogAdapterOutputs(IDXGIAdapter* adapter)
 	}
 }
 
-void MxRenderer::LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format)
+void MxEngine::MxRenderer::LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format)
 {
 	UINT count = 0;
 	UINT flags = 0;
@@ -594,7 +604,7 @@ void MxRenderer::LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format)
 	}
 }
 
-void MxRenderer::OnKeyboardInput(const GameTimer& gt)
+void MxEngine::MxRenderer::OnKeyboardInput(const GameTimer& gt)
 {
 	const float dt = gt.DeltaTime();
 
@@ -619,7 +629,7 @@ void MxRenderer::OnKeyboardInput(const GameTimer& gt)
 	mCamera.UpdateViewMatrix();
 }
 
-void MxRenderer::OnMouseDown(WPARAM btnState, int x, int y)
+void MxEngine::MxRenderer::OnMouseDown(WPARAM btnState, int x, int y)
 {
 	mLastMousePos.x = x;
 	mLastMousePos.y = y;
@@ -627,12 +637,12 @@ void MxRenderer::OnMouseDown(WPARAM btnState, int x, int y)
 	SetCapture(mhMainWnd);
 }
 
-void MxRenderer::OnMouseUp(WPARAM btnState, int x, int y)
+void MxEngine::MxRenderer::OnMouseUp(WPARAM btnState, int x, int y)
 {
 	ReleaseCapture();
 }
 
-void MxRenderer::OnMouseMove(WPARAM btnState, int x, int y)
+void MxEngine::MxRenderer::OnMouseMove(WPARAM btnState, int x, int y)
 {
 	if ((btnState & MK_LBUTTON) != 0)
 	{
@@ -648,7 +658,7 @@ void MxRenderer::OnMouseMove(WPARAM btnState, int x, int y)
 	mLastMousePos.y = y;
 }
 
-void MxRenderer::UpdateCamera(const GameTimer& gt)
+void MxEngine::MxRenderer::UpdateCamera(const GameTimer& gt)
 {
 	// Convert Spherical to Cartesian coordinates.
 	mEyePos.x = mRadius * sinf(mPhi) * cosf(mTheta) + inputPos.x;
@@ -671,7 +681,7 @@ void MxRenderer::UpdateCamera(const GameTimer& gt)
 	XMStoreFloat4x4(&mView, view);
 }
 
-void MxRenderer::UpdateObjectCBs(const GameTimer& gt)
+void MxEngine::MxRenderer::UpdateObjectCBs(const GameTimer& gt)
 {
 	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 
@@ -693,7 +703,7 @@ void MxRenderer::UpdateObjectCBs(const GameTimer& gt)
 	}
 }
 
-void MxRenderer::UpdateMaterialCBs(const GameTimer& gt)
+void MxEngine::MxRenderer::UpdateMaterialCBs(const GameTimer& gt)
 {
 	auto currMaterialCB = mCurrFrameResource->MaterialCB.get();
 	for (auto& e : mMaterials)
@@ -729,7 +739,7 @@ void MxRenderer::UpdateMaterialCBs(const GameTimer& gt)
 	}
 }
 
-void MxRenderer::UpdateMainPassCB(const GameTimer& gt)
+void MxEngine::MxRenderer::UpdateMainPassCB(const GameTimer& gt)
 {
 	XMMATRIX view = mCamera.GetView();
 	XMMATRIX proj = mCamera.GetProj();
@@ -766,7 +776,7 @@ void MxRenderer::UpdateMainPassCB(const GameTimer& gt)
 	UpdateCubeMapFacePassCBs();
 }
 
-void MxRenderer::UpdateShadowTransform(const GameTimer& gt)
+void MxEngine::MxRenderer::UpdateShadowTransform(const GameTimer& gt)
 {
 	// Only the first "main" light casts a shadow.
 	XMVECTOR lightDir = XMLoadFloat3(&mDirectLightDir);
@@ -807,7 +817,7 @@ void MxRenderer::UpdateShadowTransform(const GameTimer& gt)
 	XMStoreFloat4x4(&mShadowTransform, S);
 }
 
-void MxRenderer::UpdateShadowPassCB(const GameTimer& gt)
+void MxEngine::MxRenderer::UpdateShadowPassCB(const GameTimer& gt)
 {
 	XMMATRIX view = XMLoadFloat4x4(&mLightView);
 	XMMATRIX proj = XMLoadFloat4x4(&mLightProj);
@@ -837,7 +847,7 @@ void MxRenderer::UpdateShadowPassCB(const GameTimer& gt)
 	currPassCB->CopyData(1, mShadowPassCB);
 }
 
-void MxRenderer::BuildPrefilterPassCB()
+void MxEngine::MxRenderer::BuildPrefilterPassCB()
 {
 	for (int i = 0; i < gPrefilterLevel; ++i)
 	{
@@ -847,7 +857,7 @@ void MxRenderer::BuildPrefilterPassCB()
 	}
 }
 
-void MxRenderer::UpdateCubeMapFacePassCBs()
+void MxEngine::MxRenderer::UpdateCubeMapFacePassCBs()
 {
 	for (int i = 0; i < 6; ++i)
 	{
@@ -882,7 +892,7 @@ void MxRenderer::UpdateCubeMapFacePassCBs()
 	}
 }
 
-void MxRenderer::BuildDescriptorHeaps()
+void MxEngine::MxRenderer::BuildDescriptorHeaps()
 {
 	UINT objCount = (UINT)mAllRitems.size();
 	UINT matCount = (UINT)mMaterials.size();
@@ -962,12 +972,12 @@ void MxRenderer::BuildDescriptorHeaps()
 
 }
 
-void MxRenderer::BuildConstantBufferViews()
+void MxEngine::MxRenderer::BuildConstantBufferViews()
 {
 
 }
 
-void MxRenderer::BuileSourceBufferViews()
+void MxEngine::MxRenderer::BuileSourceBufferViews()
 {
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -1060,7 +1070,7 @@ void MxRenderer::BuileSourceBufferViews()
 
 }
 
-void MxRenderer::BuildRootSignature()
+void MxEngine::MxRenderer::BuildRootSignature()
 {
 	//创建描述符表
 	CD3DX12_DESCRIPTOR_RANGE texTable[4];
@@ -1106,7 +1116,7 @@ void MxRenderer::BuildRootSignature()
 		IID_PPV_ARGS(&mRootSignature)));
 }
 
-void MxRenderer::BuildShadersAndInputLayout()
+void MxEngine::MxRenderer::BuildShadersAndInputLayout()
 {
 	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_1");
 	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "PS", "ps_5_1");
@@ -1138,7 +1148,7 @@ void MxRenderer::BuildShadersAndInputLayout()
 	};
 }
 
-void MxRenderer::BuildShapeGeometry()
+void MxEngine::MxRenderer::BuildShapeGeometry()
 {
 	GeometryGenerator geoGen;
 	GeometryGenerator::MeshData sphere = geoGen.CreateSphere(1.0f,100,100);
@@ -1265,7 +1275,7 @@ void MxRenderer::BuildShapeGeometry()
 	mGeometries[geo->Name] = std::move(geo);
 }
 
-void MxRenderer::BuildPSOs()
+void MxEngine::MxRenderer::BuildPSOs()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 
@@ -1412,7 +1422,7 @@ void MxRenderer::BuildPSOs()
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&prefilterPsoDesc, IID_PPV_ARGS(&mPSOs["Prefilter"])));
 }
 
-void MxRenderer::BuildFrameResources()
+void MxEngine::MxRenderer::BuildFrameResources()
 {
 	for (int i = 0; i < gNumFrameResources; ++i)
 	{
@@ -1421,7 +1431,7 @@ void MxRenderer::BuildFrameResources()
 	}
 }
 
-void MxRenderer::BuildRenderItems()
+void MxEngine::MxRenderer::BuildRenderItems()
 {
 	auto sphereRitem = std::make_unique<RenderItem>();
 	XMStoreFloat4x4(&sphereRitem->World, XMMatrixScaling(2.0f, 2.0f, 2.0f) * XMMatrixTranslation(0.0f, 10.0f, 0.0f));
@@ -1565,7 +1575,7 @@ void MxRenderer::BuildRenderItems()
 	mRitemLayer[(int)RenderLayer::DeferredGeo] = mRitemLayer[(int)RenderLayer::Opaque];
 }
 
-void MxRenderer::BuildCubeFaceCamera(float x, float y, float z)
+void MxEngine::MxRenderer::BuildCubeFaceCamera(float x, float y, float z)
 {
 	XMFLOAT3 center(x, y, z);
 
@@ -1613,7 +1623,7 @@ void MxRenderer::BuildCubeFaceCamera(float x, float y, float z)
 	}
 }
 
-void MxRenderer::BuildCubeDepthStencil()
+void MxEngine::MxRenderer::BuildCubeDepthStencil()
 {
 	// Create the depth/stencil buffer and view.
 	D3D12_RESOURCE_DESC depthStencilDesc;
@@ -1674,7 +1684,7 @@ void MxRenderer::BuildCubeDepthStencil()
 
 }
 
-void MxRenderer::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
+void MxEngine::MxRenderer::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 {
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 	UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
@@ -1702,7 +1712,7 @@ void MxRenderer::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::
 
 }
 
-void MxRenderer::DrawSceneToShadowMap()
+void MxEngine::MxRenderer::DrawSceneToShadowMap()
 {
 	mCommandList->RSSetViewports(1, &mShadowMap->Viewport());
 	mCommandList->RSSetScissorRects(1, &mShadowMap->ScissorRect());
@@ -1736,7 +1746,7 @@ void MxRenderer::DrawSceneToShadowMap()
 		D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
-void MxRenderer::DrawSceneToCubeMap()
+void MxEngine::MxRenderer::DrawSceneToCubeMap()
 {
 	mCommandList->RSSetViewports(1, &mEnvCubeMap->Viewport());
 	mCommandList->RSSetScissorRects(1, &mEnvCubeMap->ScissorRect());
@@ -1779,7 +1789,7 @@ void MxRenderer::DrawSceneToCubeMap()
 
 }
 
-void MxRenderer::DrawIrradianceCubeMap()
+void MxEngine::MxRenderer::DrawIrradianceCubeMap()
 {
 	mCommandList->RSSetViewports(1, &mIrradianceCubeMap->Viewport());
 	mCommandList->RSSetScissorRects(1, &mIrradianceCubeMap->ScissorRect());
@@ -1819,7 +1829,7 @@ void MxRenderer::DrawIrradianceCubeMap()
 
 }
 
-void MxRenderer::DrawPrefilterCubeMap()
+void MxEngine::MxRenderer::DrawPrefilterCubeMap()
 {
 	mCommandList->SetPipelineState(mPSOs["Prefilter"].Get());
 	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
@@ -1866,7 +1876,7 @@ void MxRenderer::DrawPrefilterCubeMap()
 
 }
 
-void MxRenderer::DrawGBufferMap()
+void MxEngine::MxRenderer::DrawGBufferMap()
 {
 	mCommandList->RSSetViewports(1, &mGBufferMRT->Viewport());
 	mCommandList->RSSetScissorRects(1, &mGBufferMRT->ScissorRect());
@@ -1907,7 +1917,7 @@ void MxRenderer::DrawGBufferMap()
 
 }
 
-std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> MxRenderer::GetStaticSamplers()
+std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> MxEngine::MxRenderer::GetStaticSamplers()
 {
 	const CD3DX12_STATIC_SAMPLER_DESC pointWrap(
 		0, // shaderRegister
@@ -1975,7 +1985,7 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> MxRenderer::GetStaticSamplers()
 	};
 }
 
-void MxRenderer::LoadTexture()
+void MxEngine::MxRenderer::LoadTexture()
 {
 	//std::unordered_map<std::string, std::wstring> MaterialTex
 	//{
@@ -2035,7 +2045,7 @@ void MxRenderer::LoadTexture()
 
 }
 
-void MxRenderer::BuildMaterial()
+void MxEngine::MxRenderer::BuildMaterial()
 {
 	int matIndex = 0;
 
@@ -2156,23 +2166,23 @@ void MxRenderer::BuildMaterial()
 	}
 }
 
-void MxRenderer::LoadModel()
+void MxEngine::MxRenderer::LoadModel()
 {
 	Resource::LoadModelFromFile("Assets/GltfModel/DamagedHelmet.gltf");
 
 }
 
-HINSTANCE MxRenderer::AppInst() const
+HINSTANCE MxEngine::MxRenderer::AppInst() const
 {
 	return mhAppInst;
 }
 
-HWND MxRenderer::MainWnd() const
+HWND MxEngine::MxRenderer::MainWnd() const
 {
 	return mhMainWnd;
 }
 
-float MxRenderer::AspectRatio() const
+float MxEngine::MxRenderer::AspectRatio() const
 {
 	return static_cast<float>(mClientWidth) / mClientHeight;
 }

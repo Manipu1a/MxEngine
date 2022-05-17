@@ -1,10 +1,18 @@
 #include "MxWorld.h"
-#include "MxRenderer.h"
 #include "MxLevel.h"
 
-MxWorld* MxWorld::mWorld = nullptr;
+namespace MxEngine
+{
+	MxWorld* MxWorld::mWorld = nullptr;
 
-MxWorld::MxWorld(HINSTANCE& hInstance)
+	MxWorld* MxWorld::GetWorld()
+	{
+		return mWorld;
+	}
+}
+
+
+MxEngine::MxWorld::MxWorld(HINSTANCE& hInstance)
 {
 	Level = std::make_unique<MxLevel>();
 	mWorld = this;
@@ -12,27 +20,22 @@ MxWorld::MxWorld(HINSTANCE& hInstance)
 	MSPF = 0;
 }
 
-MxWorld::~MxWorld()
+MxEngine::MxWorld::~MxWorld()
 {
 	Level.release();
 }
 
-MxWorld* MxWorld::GetWorld()
-{
-	return mWorld;
-}
-
-MxLevel* MxWorld::GetMainLevel()
+MxEngine::MxLevel* MxEngine::MxWorld::GetMainLevel()
 {
 	return Level.get();
 }
 
-void MxWorld::Initialize()
+void MxEngine::MxWorld::Initialize()
 {
 	Level->CreateLevelContent();
 }
 
-int MxWorld::TickWorld()
+int MxEngine::MxWorld::TickWorld()
 {
 	return 0;
 }

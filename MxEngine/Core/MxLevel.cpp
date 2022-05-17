@@ -1,17 +1,20 @@
 #include "MxLevel.h"
 #include "../Common/GeometryGenerator.h"
 #include "../Common/FrameResource.h"
-#include "../Common/d3dApp.h"
 #include "MxRenderComponent.h"
+#include "MxRenderer.h"
 
-UINT MxLevel::GlobalIDManager = 0;
+namespace MxEngine
+{
+	UINT MxLevel::GlobalIDManager = 0;
+}
 
-MxLevel::MxLevel()
+MxEngine::MxLevel::MxLevel()
 {
 
 }
 
-void MxLevel::CreateLevelContent()
+void MxEngine::MxLevel::CreateLevelContent()
 {
 	GeometryGenerator geoGen;
 	GeometryGenerator::MeshData sphere = geoGen.CreateSphere(1.0f, 100, 100);
@@ -53,11 +56,11 @@ void MxLevel::CreateLevelContent()
 	ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 	
-	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(D3DApp::GetApp()->GetDevice().Get(),
-		D3DApp::GetApp()->GetCommandList().Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(MxEngine::MxRenderer::GetRenderer()->GetDevice().Get(),
+		MxEngine::MxRenderer::GetRenderer()->GetCommandList().Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
 
-	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(D3DApp::GetApp()->GetDevice().Get(),
-		D3DApp::GetApp()->GetCommandList().Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(MxEngine::MxRenderer::GetRenderer()->GetDevice().Get(),
+		MxEngine::MxRenderer::GetRenderer()->GetCommandList().Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
 
 	geo->VertexByteStride = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
@@ -88,7 +91,7 @@ void MxLevel::CreateLevelContent()
 	AddObject(NewObject);
 }
 
-UINT MxLevel::AddObject(MxObject& object)
+UINT MxEngine::MxLevel::AddObject(MxObject& object)
 {
 	UINT Id = GlobalIDManager++;
 	object.ObjectID = Id;

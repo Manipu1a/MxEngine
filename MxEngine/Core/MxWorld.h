@@ -9,33 +9,37 @@
     *  @date     : 2022/05/04 10:52 
     *  @brief    : ���� 
 **************************************************************************/
-#include "../Common/d3dApp.h"
+#include "MxRenderer.h"
 
-class MxLevel;
-
-class MxWorld
+namespace MxEngine
 {
-public:
-    MxWorld(HINSTANCE& hInstance);
-    ~MxWorld();
+	class MxLevel;
 
-    static MxWorld* GetWorld();
-    MxLevel* GetMainLevel();
+	class MxWorld
+	{
+	public:
+		MxWorld(HINSTANCE& hInstance);
+		~MxWorld();
 
-    void Initialize();
+		static MxWorld* GetWorld();
+		MxLevel* GetMainLevel();
 
-    int TickWorld();
+		void Initialize();
 
-    inline float GetFPS() {return FPS;}
-    
-private:
-    static MxWorld* mWorld;
+		int TickWorld();
 
-    float FPS;
-    float MSPF;
-    
-    GameTimer mTimer;
-    bool      mAppPaused = false;  // is the application paused?
-    
-    std::unique_ptr<MxLevel> Level;
-};
+		inline float GetFPS() { return FPS; }
+
+	private:
+		static MxWorld* mWorld;
+
+		float FPS;
+		float MSPF;
+
+		GameTimer mTimer;
+		bool      mAppPaused = false;  // is the application paused?
+
+		std::unique_ptr<MxLevel> Level;
+	};
+
+}

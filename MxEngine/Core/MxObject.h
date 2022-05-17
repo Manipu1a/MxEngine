@@ -9,9 +9,7 @@
     *  @date     : 2022/05/04 10:01 
     *  @brief    : Object 
 **************************************************************************/
-
-#include "../Common/d3dApp.h"
-
+#include "MxRenderer.h"
 class MxRenderComponent;
 
 class MxObject
@@ -20,10 +18,9 @@ public:
     MxObject();
 	MxObject(const std::string& name);
 
-
-    XMFLOAT3 Location;
-    XMFLOAT3 Rotation;
-    XMFLOAT3 Scale;
+    DirectX::XMFLOAT3 Location;
+    DirectX::XMFLOAT3 Rotation;
+    DirectX::XMFLOAT3 Scale;
 
     std::shared_ptr<MxRenderComponent> RenderComponent;
     std::string ObjectName;

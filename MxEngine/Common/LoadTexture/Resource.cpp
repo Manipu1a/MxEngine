@@ -1,5 +1,4 @@
 #include "Resource.h"
-#include "../d3dApp.h"
 #include "../CommonVertexFormat.h"
 
 #include <algorithm>
@@ -10,14 +9,15 @@
 #define CGLTF_IMPLEMENTATION
 #include "../../cgltf/cgltf.h"
 #include "../FrameResource.h"
+#include "../../Core/MxRenderer.h"
 
 HRESULT Resource::CreateShaderResourceViewFromFile(const wchar_t* szFileName, Texture* textureData)
 {
 	if (!szFileName)
 		return E_INVALIDARG;
 
-	auto d3dDevice = D3DApp::GetApp()->GetDevice().Get();
-	auto commderList = D3DApp::GetApp()->GetCommandList().Get();
+	auto d3dDevice = MxEngine::MxRenderer::GetRenderer()->GetDevice().Get();
+	auto commderList = MxEngine::MxRenderer::GetRenderer()->GetCommandList().Get();
 	HRESULT hr;
 	WCHAR ext[_MAX_EXT];
 	_wsplitpath_s(szFileName, nullptr, 0, nullptr, 0, nullptr, 0, ext, _MAX_EXT);
@@ -37,8 +37,8 @@ HRESULT Resource::CreateShaderResourceViewFromFile(const wchar_t* szFileName, Te
 HRESULT Resource::LoadModelFromFile(const char* szFileName)
 {
 	HRESULT hr = S_OK;
-	auto d3dDevice = D3DApp::GetApp()->GetDevice().Get();
-	auto commderList = D3DApp::GetApp()->GetCommandList().Get();
+	auto d3dDevice = MxEngine::MxRenderer::GetRenderer()->GetDevice().Get();
+	auto commderList = MxEngine::MxRenderer::GetRenderer()->GetCommandList().Get();
 
 	cgltf_options options = {};
 	cgltf_data* data = NULL;
@@ -129,7 +129,7 @@ HRESULT Resource::LoadModelFromFile(const char* szFileName)
 		
 		geo->DrawArgs["model"] = modelSubmesh;
 
-		D3DApp::GetApp()->SaveMesh(geo);
+		MxEngine::MxRenderer::GetRenderer()->SaveMesh(geo);
 
 		//build material
 		for (int i = 0; i < data->materials_count; ++i)
@@ -142,17 +142,17 @@ HRESULT Resource::LoadModelFromFile(const char* szFileName)
 				{
 					auto name = materialPointer->pbr_metallic_roughness.base_color_texture.texture->image->uri;
 					std::stringstream filename;
-					filename << "Assets/GltfModel/" + (string)name + "";
+					filename << "Assets/GltfModel/" + (std::string)name + "";
 
-					D3DApp::GetApp()->SaveTexturePath("Default_albedo", AnsiToWString(filename.str()));
+					MxEngine::MxRenderer::GetRenderer()->SaveTexturePath("Default_albedo", AnsiToWString(filename.str()));
 				}
 
 				if (materialPointer->pbr_metallic_roughness.metallic_roughness_texture.texture)
 				{
 					auto name = materialPointer->pbr_metallic_roughness.metallic_roughness_texture.texture->image->uri;
 					std::stringstream filename;
-					filename << "Assets/GltfModel/" + (string)name + "";
-					D3DApp::GetApp()->SaveTexturePath("metallicRoughnessTexture", AnsiToWString(filename.str()));
+					filename << "Assets/GltfModel/" + (std::string)name + "";
+					MxEngine::MxRenderer::GetRenderer()->SaveTexturePath("metallicRoughnessTexture", AnsiToWString(filename.str()));
 				}
 			}
 
@@ -160,16 +160,16 @@ HRESULT Resource::LoadModelFromFile(const char* szFileName)
 			{
 				auto name = materialPointer->normal_texture.texture->image->uri;
 				std::stringstream filename;
-				filename << "Assets/GltfModel/" + (string)name + "";
-				D3DApp::GetApp()->SaveTexturePath("Default_normal", AnsiToWString(filename.str()));
+				filename << "Assets/GltfModel/" + (std::string)name + "";
+				MxEngine::MxRenderer::GetRenderer()->SaveTexturePath("Default_normal", AnsiToWString(filename.str()));
 			}
 
 			if (materialPointer->emissive_texture.texture)
 			{
 				auto name = materialPointer->emissive_texture.texture->image->uri;
 				std::stringstream filename;
-				filename << "Assets/GltfModel/" + (string)name + "";
-				D3DApp::GetApp()->SaveTexturePath("Default_emissive", AnsiToWString(filename.str()));
+				filename << "Assets/GltfModel/" + (std::string)name + "";
+				MxEngine::MxRenderer::GetRenderer()->SaveTexturePath("Default_emissive", AnsiToWString(filename.str()));
 			}
 		}
 

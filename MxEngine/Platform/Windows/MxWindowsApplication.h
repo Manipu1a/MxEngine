@@ -2,9 +2,8 @@
 
 #include "../../Common/BaseApplication.h"
 #include "../../Common/GameTimer.h"
-#include "../../Common/d3dApp.h"
+#include "../../Core/MxRenderer.h"
 
-class MxRenderer;
 
 namespace MxEngine
 {

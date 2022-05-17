@@ -9,8 +9,7 @@
     *  @date     : 2022/05/04 17:00 
     *  @brief    : äÖÈ¾×é¼þ 
 **************************************************************************/
-#include "../Common/d3dApp.h"
-
+#include "MxRenderer.h"
 struct MeshGeometry;
 struct Material;
 

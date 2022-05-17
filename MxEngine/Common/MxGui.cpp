@@ -1,8 +1,8 @@
 #include "MxGui.h"
-#include "d3dApp.h"
 #include "../Core/MxWorld.h"
+#include "../Core/MxRenderer.h"
 
-void MxGui::Initialize(ID3D12Device* device, HWND& winHandle)
+void MxEngine::MxGui::Initialize(ID3D12Device* device, HWND& winHandle)
 {
 	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
@@ -29,7 +29,7 @@ void MxGui::Initialize(ID3D12Device* device, HWND& winHandle)
 		mGuiSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 }
 
-void MxGui::tick_pre()
+void MxEngine::MxGui::tick_pre()
 {
 	{
 		// Start the Dear ImGui frame
@@ -40,7 +40,7 @@ void MxGui::tick_pre()
 	}
 }
 
-void MxGui::onTick()
+void MxEngine::MxGui::onTick()
 {
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -64,23 +64,24 @@ void MxGui::onTick()
 	}
 }
 
-void MxGui::tick_post()
+void MxEngine::MxGui::tick_post()
 {
 
 }
 
-void MxGui::draw_frame()
+void MxEngine::MxGui::draw_frame()
 {
 	// Rendering
 	ImGui::Render();
 
 	ID3D12DescriptorHeap* GuidescriptorHeaps[] = { mGuiSrvDescriptorHeap.Get() };
-	auto commandList = D3DApp::GetApp()->GetCommandList();
+	
+	auto commandList = MxEngine::MxRenderer::GetRenderer()->GetCommandList();
 	commandList->SetDescriptorHeaps(1, GuidescriptorHeaps);
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
 }
 
-void MxGui::clear()
+void MxEngine::MxGui::clear()
 {
 	// Cleanup
 	ImGui_ImplDX12_Shutdown();
