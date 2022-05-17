@@ -23,25 +23,39 @@ using namespace DirectX;
 using namespace DirectX::PackedVector;
 
 
-class MxRenderer : public D3DApp 
+class MxRenderer
 {
 public:
-	MxRenderer(HINSTANCE hInstance);
+	MxRenderer(HINSTANCE hInstance, HWND hWnd);
 	MxRenderer(const MxRenderer& rhs) = delete;
 	MxRenderer& operator=(const MxRenderer& rhs) = delete;
 	~MxRenderer();
 
-	virtual bool Initialize() override;
+	bool Initialize();
+	void Tick(const GameTimer& gt);
+	
 private:
-	virtual void OnResize()override;
-	virtual void Update(const GameTimer& gt)override;
-	virtual void Draw(const GameTimer& gt)override;
-	virtual void CreateRtvAndDsvDescriptorHeaps()override;
+	void OnResize();
+	void Update(const GameTimer& gt);
+	void Draw(const GameTimer& gt);
+	void CreateRtvAndDsvDescriptorHeaps();
+	//initialize d3d hardware
+	bool InitDirect3D();
+	void CreateCommandObjects();
+	void CreateSwapChain();
+	void FlushCommandQueue();
 
+	ID3D12Resource* CurrentBackBuffer()const;
+	D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView()const;
+	D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView()const;
+	void LogAdapters();
+	void LogAdapterOutputs(IDXGIAdapter* adapter);
+	void LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format);
+	
 	void OnKeyboardInput(const GameTimer& gt);
-	virtual void OnMouseDown(WPARAM btnState, int x, int y)override;
-	virtual void OnMouseUp(WPARAM btnState, int x, int y)override;
-	virtual void OnMouseMove(WPARAM btnState, int x, int y)override;
+	void OnMouseDown(WPARAM btnState, int x, int y);
+	void OnMouseUp(WPARAM btnState, int x, int y);
+	void OnMouseMove(WPARAM btnState, int x, int y);
 	void UpdateCamera(const GameTimer& gt);
 	//void AnimateMaterials(const GameTimer& gt);
 	void UpdateObjectCBs(const GameTimer& gt);
@@ -52,7 +66,7 @@ private:
 
 	void BuildPrefilterPassCB();
 
-	//更新cubemap变换矩阵数据
+	//鏇存柊cubemap鍙樻崲鐭╅樀鏁版嵁
 	void UpdateCubeMapFacePassCBs();
 	//Build pipeline
 	//void CreateDSRTandHeap();
@@ -69,9 +83,9 @@ private:
 	void BuildCubeDepthStencil();
 
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
-	//绘制depth map
+	//缁樺埗depth map
 	void DrawSceneToShadowMap();
-	//绘制cube map
+	//缁樺埗cube map
 	void DrawSceneToCubeMap();
 	void DrawIrradianceCubeMap();
 	void DrawPrefilterCubeMap();
@@ -83,7 +97,69 @@ private:
 	void LoadTexture();
 	void BuildMaterial();
 	void LoadModel();
+
+	HINSTANCE AppInst()const;
+	HWND      MainWnd()const;
+	float     AspectRatio()const;
+	static MxRenderer* GetRenderer();
+	ComPtr<ID3D12Device> GetDevice() { return md3dDevice; }
+	ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return mCommandList; }
+protected:
+	static MxRenderer* mRenderer;
+
+	
 private:
+	HINSTANCE mhAppInst = nullptr; // application instance handle
+	HWND      mhMainWnd = nullptr; // main window handle
+	
+	ComPtr<IDXGIFactory4> mdxgiFactory;
+	ComPtr<IDXGISwapChain> mSwapChain;
+	ComPtr<ID3D12Device> md3dDevice;
+	ComPtr<ID3D12Fence> mFence;
+	UINT64 mCurrentFence = 0;
+	
+	ComPtr<ID3D12CommandQueue> mCommandQueue;
+	ComPtr<ID3D12CommandAllocator> mDirectCmdListAlloc;
+	ComPtr<ID3D12GraphicsCommandList> mCommandList;
+
+	static const int SwapChainBufferCount = 2;
+	int mCurrBackBuffer = 0;
+	ComPtr<ID3D12Resource> mSwapChainBuffer[SwapChainBufferCount];
+	ComPtr<ID3D12Resource> mDepthStencilBuffer;
+	ComPtr<ID3D12DescriptorHeap> mRtvHeap;
+	ComPtr<ID3D12DescriptorHeap> mDsvHeap;
+
+	D3D12_VIEWPORT mScreenViewport; 
+	D3D12_RECT mScissorRect;
+
+	UINT mRtvDescriptorSize = 0;
+	UINT mDsvDescriptorSize = 0;
+	UINT mCbvSrvUavDescriptorSize = 0;
+
+	// Derived class should set these in derived constructor to customize starting values.
+	std::wstring mMainWndCaption = L"d3d App";
+	D3D_DRIVER_TYPE md3dDriverType = D3D_DRIVER_TYPE_HARDWARE;
+	DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	DXGI_FORMAT mRtvFormat[3] = { DXGI_FORMAT_R11G11B10_FLOAT,DXGI_FORMAT_R11G11B10_FLOAT,DXGI_FORMAT_R8G8B8A8_UNORM };
+	int mClientWidth = 1280;
+	int mClientHeight = 800;
+	
+	// Set true to use 4X MSAA (?.1.8).  The default is false.
+	bool      m4xMsaaState = false;    // 4X MSAA enabled
+	UINT      m4xMsaaQuality = 0;      // quality level of 4X MSAA
+	
+	std::unique_ptr<MxGui> Gui;
+	
+	//
+	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
+	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>> mShaders;
+	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12PipelineState>> mPSOs;
+	std::unordered_map<std::string, std::unique_ptr<Texture>> mTextures;
+	std::unordered_map<std::string, std::shared_ptr<Material>> mMaterials;
+	//tex
+	std::unordered_map<std::string, std::wstring> MaterialTex;
+	
 	//frame
 	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
 	FrameResource* mCurrFrameResource = nullptr;
@@ -123,8 +199,7 @@ private:
 	Camera mCamera;
 	Camera mLightCamera;
 	Camera mCubeMapCamera[6];
-
-
+	
 	//shadow
 	std::unique_ptr<ShadowMap> mShadowMap;
 	DirectX::BoundingSphere mSceneBounds;

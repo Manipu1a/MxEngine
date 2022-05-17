@@ -11,7 +11,7 @@ namespace MxEngine
         virtual int Initialize() = 0;
         virtual void Finalize() = 0;
 
-        virtual void Tick() = 0;
+        virtual int Tick() = 0;
     };
 }
 

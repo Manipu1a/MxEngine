@@ -48,7 +48,6 @@ public:
 
 	Microsoft::WRL::ComPtr<ID3D12Device> GetDevice() { return md3dDevice; }
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return mCommandList; }
-
 	
 	//存储资源
 	void SaveMesh(std::unique_ptr<MeshGeometry>& mgo);
@@ -143,7 +142,7 @@ protected:
 
 	std::unique_ptr<MxGui> Gui;
 
-	//×ÊÔ´
+	//
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3DBlob>> mShaders;
 	std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12PipelineState>> mPSOs;

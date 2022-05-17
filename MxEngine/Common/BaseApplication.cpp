@@ -2,9 +2,10 @@
 
 bool MxEngine::BaseApplication::m_bQuit = false;
 
-MxEngine::BaseApplication::BaseApplication()
+
+MxEngine::BaseApplication::BaseApplication(EngineConfiguration& config)
 {
- 
+    m_Config = config;
 }
 
 int MxEngine::BaseApplication::Initialize()
@@ -18,11 +19,22 @@ void MxEngine::BaseApplication::Finalize()
     
 }
 
-void MxEngine::BaseApplication::Tick()
+int MxEngine::BaseApplication::Tick()
 {
+    return 1;
 }
 
 bool MxEngine::BaseApplication::IsQuit()
 {
     return false;
+}
+
+void MxEngine::BaseApplication::OnResize()
+{
+
+}
+
+int MxEngine::BaseApplication::Run()
+{
+    return MxEngine::BaseApplication::Tick();
 }

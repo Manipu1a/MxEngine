@@ -2,7 +2,13 @@
 //
 
 #include "main.h"
-#include "Core/MxWorld.h"
+#include "Platform/Windows/MxWindowsApplication.h"
+
+using namespace MxEngine;
+
+namespace MxEngine {
+    extern IApplication* g_pApp;
+}
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 	PSTR cmdLine, int showCmd)
@@ -14,9 +20,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 
     try
     {
-        MxWorld World(hInstance);
-        World.Initialize();
-        return World.TickWorld();
+		g_pApp->Initialize();
+        return g_pApp->Run();
     }
     catch (DxException& e)
     {

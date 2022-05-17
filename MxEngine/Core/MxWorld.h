@@ -11,7 +11,6 @@
 **************************************************************************/
 #include "../Common/d3dApp.h"
 
-class MxRenderer;
 class MxLevel;
 
 class MxWorld
@@ -24,15 +23,13 @@ public:
     MxLevel* GetMainLevel();
 
     void Initialize();
-    int Run();
+
     int TickWorld();
 
     inline float GetFPS() {return FPS;}
     
 private:
     static MxWorld* mWorld;
-
-    void CalculateFrameStats();
 
     float FPS;
     float MSPF;
@@ -41,5 +38,4 @@ private:
     bool      mAppPaused = false;  // is the application paused?
     
     std::unique_ptr<MxLevel> Level;
-    std::unique_ptr<MxRenderer> Renderer;
 };

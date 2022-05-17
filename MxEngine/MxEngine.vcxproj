@@ -183,7 +183,7 @@
     <ClInclude Include="Interface\Interface.hpp" />
     <ClInclude Include="Interface\IRuntimeModule.hpp" />
     <ClInclude Include="main.h" />
-    <ClInclude Include="Platform\Windows\WindowsApplication.h" />
+    <ClInclude Include="Platform\Windows\MxWindowsApplication.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
@@ -217,7 +217,7 @@
     <ClCompile Include="imgui\imgui_tables.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Platform\Windows\WindowsApplication.cpp" />
+    <ClCompile Include="Platform\Windows\MxWindowsApplication.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MxEngine.rc" />

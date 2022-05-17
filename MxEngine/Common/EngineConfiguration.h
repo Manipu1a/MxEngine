@@ -24,7 +24,7 @@ namespace MxEngine
         uint32_t screenHeight;
 
 
-        std::ostream& operator<<(std::ostream& out, const EngineConfiguration& conf)
+        friend std::ostream& operator<<(std::ostream& out, const EngineConfiguration& conf)
         {
             out << "EngineConfiguration:" <<
                 "R:" << conf.redBits <<
