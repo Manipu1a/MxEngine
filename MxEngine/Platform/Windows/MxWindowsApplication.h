@@ -3,6 +3,7 @@
 #include "../../Common/BaseApplication.h"
 #include "../../Common/GameTimer.h"
 #include "../../Core/MxRenderer.h"
+#include "../../Core/MxWorld.h"
 
 
 namespace MxEngine
@@ -43,7 +44,8 @@ namespace MxEngine
 		float FPS;
 		float MSPF;
     	
-        std::unique_ptr<MxRenderer> Renderer;
+        std::unique_ptr<MxRenderer> mRenderer;
+    	std::unique_ptr<MxWorld> mWorld;
     };
     
 }

@@ -7,12 +7,13 @@
  
     *  @author   : Haro 
     *  @date     : 2022/04/30 11:27 
-    *  @brief    : äÖÈ¾Ä¿±ê»ùÀà 
+    *  @brief    : ï¿½ï¿½È¾Ä¿ï¿½ï¿½ï¿½ï¿½ï¿½ 
 **************************************************************************/
 
 #include "d3dUtil.h"
 
-
+namespace MxEngine
+{
 class MxRenderTargetBase
 {
 public:
@@ -66,7 +67,7 @@ public:
 	inline UINT GetWidth() { return mWidth; }
 	inline UINT GetHeight() { return mHeight; }
 
-	//×´Ì¬ÇÐ»»
+	//×´Ì¬ï¿½Ð»ï¿½
 	virtual void RTTransition(ID3D12GraphicsCommandList* cmdList, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter) = 0;
 	virtual void RTClearView(ID3D12GraphicsCommandList* cmdList, const FLOAT ColorRGBA[4], UINT NumRects, _In_reads_(NumRects) const D3D12_RECT* pRects) = 0;
 protected:
@@ -88,5 +89,4 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;
 };
-
-
+}

@@ -40,12 +40,12 @@ namespace MxEngine
 class MxRenderer
 {
 public:
-	MxRenderer(HINSTANCE hInstance, HWND hWnd);
+	MxRenderer();
 	MxRenderer(const MxRenderer& rhs) = delete;
 	MxRenderer& operator=(const MxRenderer& rhs) = delete;
 	~MxRenderer();
 
-	bool Initialize();
+	bool Initialize(HINSTANCE hInstance, HWND hWnd);
 	void Tick(const GameTimer& gt);
 	
 

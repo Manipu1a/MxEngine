@@ -22,13 +22,11 @@ namespace MxEngine
 	}
 }
 
-MxEngine::MxRenderer::MxRenderer(HINSTANCE hInstance,HWND hWnd)
+MxEngine::MxRenderer::MxRenderer()
 {
-	mhAppInst = hInstance;
-	mhMainWnd = hWnd;
-	
 	mSceneBounds.Center = XMFLOAT3(0.0f, 0.0f, 0.0f);
 	mSceneBounds.Radius = 60.0;
+	mRenderer = this;
 }
 
 MxEngine::MxRenderer::~MxRenderer()
@@ -40,8 +38,11 @@ MxEngine::MxRenderer::~MxRenderer()
 }
 
 
-bool MxEngine::MxRenderer::Initialize()
+bool MxEngine::MxRenderer::Initialize(HINSTANCE hInstance, HWND hWnd)
 {
+	mhAppInst = hInstance;
+	mhMainWnd = hWnd;
+	
 	if(!InitDirect3D())
 		return false;
 

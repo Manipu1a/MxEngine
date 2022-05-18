@@ -1,6 +1,6 @@
 #include "MxRenderTarget.h"
 
-MxRenderTarget::MxRenderTarget(ID3D12Device* device, UINT width, UINT height, DXGI_FORMAT format, UINT mipmap /*= 1*/, UINT RtNum) : MxRenderTargetBase(device,width,height,format,mipmap,RtNum)
+MxEngine::MxRenderTarget::MxRenderTarget(ID3D12Device* device, UINT width, UINT height, DXGI_FORMAT format, UINT mipmap /*= 1*/, UINT RtNum) : MxRenderTargetBase(device,width,height,format,mipmap,RtNum)
 {
 	md3dDevice = device;
 
@@ -17,7 +17,7 @@ MxRenderTarget::MxRenderTarget(ID3D12Device* device, UINT width, UINT height, DX
 }
 
 
-ID3D12Resource* MxRenderTarget::Resource(UINT Index /*= 0*/)
+ID3D12Resource* MxEngine::MxRenderTarget::Resource(UINT Index /*= 0*/)
 {
 	if (mResourceMaps.size() >= Index + 1)
 	{
@@ -26,7 +26,7 @@ ID3D12Resource* MxRenderTarget::Resource(UINT Index /*= 0*/)
 	return nullptr;
 }
 
-CD3DX12_GPU_DESCRIPTOR_HANDLE MxRenderTarget::Srv(UINT Index /*= 0*/)
+CD3DX12_GPU_DESCRIPTOR_HANDLE MxEngine::MxRenderTarget::Srv(UINT Index /*= 0*/)
 {
 	if (Index + 1 <= mRTNum)
 	{
@@ -36,7 +36,7 @@ CD3DX12_GPU_DESCRIPTOR_HANDLE MxRenderTarget::Srv(UINT Index /*= 0*/)
 	return mhGpuSrv;
 }
 
-CD3DX12_CPU_DESCRIPTOR_HANDLE MxRenderTarget::Rtv(UINT Index /*= 0*/)
+CD3DX12_CPU_DESCRIPTOR_HANDLE MxEngine::MxRenderTarget::Rtv(UINT Index /*= 0*/)
 {
 	if (Index + 1 <= mRTNum)
 	{
@@ -46,7 +46,7 @@ CD3DX12_CPU_DESCRIPTOR_HANDLE MxRenderTarget::Rtv(UINT Index /*= 0*/)
 	return mhCpuRtv;
 }
 
-void MxRenderTarget::BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv, CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv)
+void MxEngine::MxRenderTarget::BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv, CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv)
 {
 	mhCpuSrv = hCpuSrv;
 	mhGpuSrv = hGpuSrv;
@@ -64,7 +64,7 @@ void MxRenderTarget::BuileRenderTarget(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv, CD
 	BuildDescriptors();
 }
 
-void MxRenderTarget::BuildDescriptors()
+void MxEngine::MxRenderTarget::BuildDescriptors()
 {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE mRTVCpuHandle = mhCpuRtv;
 	CD3DX12_CPU_DESCRIPTOR_HANDLE mSRVCpuHandle = mhCpuSrv;
@@ -92,7 +92,7 @@ void MxRenderTarget::BuildDescriptors()
 	}
 }
 
-void MxRenderTarget::BuildResource()
+void MxEngine::MxRenderTarget::BuildResource()
 {
 	// Note, compressed formats cannot be used for UAV.  We get error like:
 	// ERROR: ID3D11Device::CreateTexture2D: The format (0x4d, BC3_UNORM) 
@@ -128,7 +128,7 @@ void MxRenderTarget::BuildResource()
 	}
 }
 
-void MxRenderTarget::RTTransition(ID3D12GraphicsCommandList* cmdList, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter)
+void MxEngine::MxRenderTarget::RTTransition(ID3D12GraphicsCommandList* cmdList, D3D12_RESOURCE_STATES stateBefore, D3D12_RESOURCE_STATES stateAfter)
 {
 	for (UINT i = 0; i < mResourceMaps.size(); i++)
 	{
@@ -137,7 +137,7 @@ void MxRenderTarget::RTTransition(ID3D12GraphicsCommandList* cmdList, D3D12_RESO
 	}
 }
 
-void MxRenderTarget::RTClearView(ID3D12GraphicsCommandList* cmdList, const FLOAT ColorRGBA[4], UINT NumRects, _In_reads_(NumRects) const D3D12_RECT* pRects)
+void MxEngine::MxRenderTarget::RTClearView(ID3D12GraphicsCommandList* cmdList, const FLOAT ColorRGBA[4], UINT NumRects, _In_reads_(NumRects) const D3D12_RECT* pRects)
 {
 	for (UINT i = 0; i < mRTNum; i++)
 	{

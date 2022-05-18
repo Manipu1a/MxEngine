@@ -19,12 +19,13 @@ namespace MxEngine
 MxEngine::MxWindowsApplication::MxWindowsApplication(EngineConfiguration& config): BaseApplication(config)
 {
 	mhAppInst = GetModuleHandle(NULL);
-	Renderer = std::make_unique<MxRenderer>(mhAppInst, mhMainWnd);
+	mRenderer = std::make_unique<MxRenderer>();
+	mWorld = std::make_unique<MxWorld>();
 }
 
 MxEngine::MxWindowsApplication::~MxWindowsApplication()
 {
-	Renderer.release();
+	mRenderer.release();
 }
 
 int MxEngine::MxWindowsApplication::Initialize()
@@ -66,7 +67,7 @@ int MxEngine::MxWindowsApplication::Initialize()
 	UpdateWindow(mhMainWnd);
 
 	//initialize renderer
-	Renderer->Initialize();
+	mRenderer->Initialize(mhAppInst, mhMainWnd);
 	
     return BaseApplication::Initialize();
 }

@@ -18,7 +18,7 @@ namespace MxEngine
 	class MxWorld
 	{
 	public:
-		MxWorld(HINSTANCE& hInstance);
+		MxWorld();
 		~MxWorld();
 
 		static MxWorld* GetWorld();

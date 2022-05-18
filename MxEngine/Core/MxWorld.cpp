@@ -12,7 +12,7 @@ namespace MxEngine
 }
 
 
-MxEngine::MxWorld::MxWorld(HINSTANCE& hInstance)
+MxEngine::MxWorld::MxWorld()
 {
 	Level = std::make_unique<MxLevel>();
 	mWorld = this;
