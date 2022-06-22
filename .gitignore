@@ -1,5 +1,6 @@
 # Prerequisites
 *.d
+*.idb
 
 # Compiled Object files
 *.slo
@@ -40,3 +41,6 @@
 
 MxEngine/x64/*
 MxEngine/Debug/*
+
+Bin/*
+Intermediate/*

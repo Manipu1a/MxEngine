@@ -78,6 +78,10 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>..\Bin\Debug\MxEngine\</OutDir>
+    <IntDir>..\Intermediate\Debug\MxEngineEditor\</IntDir>
+    <TargetName>MxEngine</TargetName>
+    <LibraryPath>..\Bin\Debug\MxUI;..\Bin\Debug\MxEditor;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -118,6 +122,8 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
       <PrecompiledHeader />
+      <AdditionalIncludeDirectories>..\MxEditor\include;..\MxUI\include;..\MxMath;</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -170,14 +176,6 @@
     <ClInclude Include="Core\MxWorld.h" />
     <ClInclude Include="Core\MxRenderer.h" />
     <ClInclude Include="framework.h" />
-    <ClInclude Include="imgui\imconfig.h" />
-    <ClInclude Include="imgui\imgui.h" />
-    <ClInclude Include="imgui\imgui_impl_dx12.h" />
-    <ClInclude Include="imgui\imgui_impl_win32.h" />
-    <ClInclude Include="imgui\imgui_internal.h" />
-    <ClInclude Include="imgui\imstb_rectpack.h" />
-    <ClInclude Include="imgui\imstb_textedit.h" />
-    <ClInclude Include="imgui\imstb_truetype.h" />
     <ClInclude Include="Interface\IApplication.hpp" />
     <ClInclude Include="Interface\Interface.hpp" />
     <ClInclude Include="Interface\IRuntimeModule.hpp" />
@@ -207,13 +205,6 @@
     <ClCompile Include="Core\MxRenderComponent.cpp" />
     <ClCompile Include="Core\MxWorld.cpp" />
     <ClCompile Include="Core\MxRenderer.cpp" />
-    <ClCompile Include="imgui\imgui.cpp" />
-    <ClCompile Include="imgui\imgui_demo.cpp" />
-    <ClCompile Include="imgui\imgui_draw.cpp" />
-    <ClCompile Include="imgui\imgui_impl_dx12.cpp" />
-    <ClCompile Include="imgui\imgui_impl_win32.cpp" />
-    <ClCompile Include="imgui\imgui_tables.cpp" />
-    <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Platform\Windows\MxWindowsApplication.cpp" />
   </ItemGroup>

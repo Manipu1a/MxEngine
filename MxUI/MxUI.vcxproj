@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{E62D3B75-CDD7-4E9D-9ED6-ECF2CECBF173}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>MxUI</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>..\Bin\Debug\MxEditor\</OutDir>
+    <IntDir>..\Intermediate\Debug\MxEditor\</IntDir>
+    <TargetName>MxUI</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>..\Bin\Debug\MxUI\</OutDir>
+    <IntDir>..\Intermediate\Debug\MxUI\</IntDir>
+    <TargetName>MxUI</TargetName>
+    <TargetExt>.lib</TargetExt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>Default</ConformanceMode>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>include;..\MxMath;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>include;..\MxMath;</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="include\MxUI\Common\UICommon.h" />
+    <ClInclude Include="include\MxUI\Core\Canvas.h" />
+    <ClInclude Include="include\MxUI\Core\UIManager.h" />
+    <ClInclude Include="include\MxUI\Imgui\imconfig.h" />
+    <ClInclude Include="include\MxUI\Imgui\imgui.h" />
+    <ClInclude Include="include\MxUI\Imgui\imgui_impl_dx12.h" />
+    <ClInclude Include="include\MxUI\Imgui\imgui_impl_win32.h" />
+    <ClInclude Include="include\MxUI\Imgui\imgui_internal.h" />
+    <ClInclude Include="include\MxUI\Imgui\imstb_rectpack.h" />
+    <ClInclude Include="include\MxUI\Imgui\imstb_textedit.h" />
+    <ClInclude Include="include\MxUI\Imgui\imstb_truetype.h" />
+    <ClInclude Include="include\MxUI\Interface\Drawable.h" />
+    <ClInclude Include="include\MxUI\Internal\Color.h" />
+    <ClInclude Include="include\MxUI\Internal\Converter.h" />
+    <ClInclude Include="include\MxUI\Internal\WidgetContainer.h" />
+    <ClInclude Include="include\MxUI\Panels\PanelBase.h" />
+    <ClInclude Include="include\MxUI\Panels\PanelMenuBar.h" />
+    <ClInclude Include="include\MxUI\Panels\PanelTransformable.h" />
+    <ClInclude Include="include\MxUI\Panels\PanelUndecorated.h" />
+    <ClInclude Include="include\MxUI\Panels\PanelWindow.h" />
+    <ClInclude Include="include\MxUI\Plugins\ContextualMenu.h" />
+    <ClInclude Include="include\MxUI\Plugins\DataDispatcher.h" />
+    <ClInclude Include="include\MxUI\Plugins\IPlugin.h" />
+    <ClInclude Include="include\MxUI\Plugins\Pluginable.h" />
+    <ClInclude Include="include\MxUI\Widgets\DataWidget.h" />
+    <ClInclude Include="include\MxUI\Widgets\Layout\Group.h" />
+    <ClInclude Include="include\MxUI\Widgets\Menu\MenuItem.h" />
+    <ClInclude Include="include\MxUI\Widgets\Menu\MenuList.h" />
+    <ClInclude Include="include\MxUI\Widgets\WidgetBase.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\MxUI\Core\Canvas.cpp" />
+    <ClCompile Include="src\MxUI\Core\UIManager.cpp" />
+    <ClCompile Include="src\MxUI\Imgui\imgui.cpp" />
+    <ClCompile Include="src\MxUI\Imgui\imgui_demo.cpp" />
+    <ClCompile Include="src\MxUI\Imgui\imgui_draw.cpp" />
+    <ClCompile Include="src\MxUI\Imgui\imgui_impl_dx12.cpp" />
+    <ClCompile Include="src\MxUI\Imgui\imgui_impl_win32.cpp" />
+    <ClCompile Include="src\MxUI\Imgui\imgui_tables.cpp" />
+    <ClCompile Include="src\MxUI\Imgui\imgui_widgets.cpp" />
+    <ClCompile Include="src\MxUI\Internal\Color.cpp" />
+    <ClCompile Include="src\MxUI\Internal\Converter.cpp" />
+    <ClCompile Include="src\MxUI\Internal\WidgetContainer.cpp" />
+    <ClCompile Include="src\MxUI\Panels\PanelBase.cpp" />
+    <ClCompile Include="src\MxUI\Panels\PanelMenuBar.cpp" />
+    <ClCompile Include="src\MxUI\Panels\PanelTransformable.cpp" />
+    <ClCompile Include="src\MxUI\Panels\PanelUndecorated.cpp" />
+    <ClCompile Include="src\MxUI\Panels\PanelWindow.cpp" />
+    <ClCompile Include="src\MxUI\Widgets\Layout\Group.cpp" />
+    <ClCompile Include="src\MxUI\Widgets\Menu\MenuItem.cpp" />
+    <ClCompile Include="src\MxUI\Widgets\Menu\MenuList.cpp" />
+    <ClCompile Include="src\MxUI\Widgets\WidgetBase.cpp" />
+    <ClCompile Include="src\Plugins\ContextualMenu.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

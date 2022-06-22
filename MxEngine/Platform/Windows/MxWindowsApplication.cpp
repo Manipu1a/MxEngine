@@ -1,11 +1,13 @@
 #include "MxWindowsApplication.h"
-#include "../../Core/MxRenderer.h"
 namespace MxEngine
 {
 	EngineConfiguration config(8, 8, 8, 8, 32, 0, 0, 960, 540);
-	MxWindowsApplication g_App(config);
+	std::string projectPath;
+	std::string projectName;
+	
+	MxWindowsApplication g_App(config,projectPath,projectName);
 	IApplication* g_pApp = &g_App;
-
+	
 	LRESULT CALLBACK
 		MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
@@ -16,16 +18,17 @@ namespace MxEngine
 }
 
 
-MxEngine::MxWindowsApplication::MxWindowsApplication(EngineConfiguration& config): BaseApplication(config)
+MxEngine::MxWindowsApplication::MxWindowsApplication(EngineConfiguration& config,const std::string& p_projectPath, const std::string& p_projectName): BaseApplication(config)
+	,m_context(p_projectPath, p_projectName), m_editor(m_context)
 {
 	mhAppInst = GetModuleHandle(NULL);
-	mRenderer = std::make_unique<MxRenderer>();
+	//mRenderer = std::make_unique<MxRenderer>();
 	mWorld = std::make_unique<MxWorld>();
 }
 
 MxEngine::MxWindowsApplication::~MxWindowsApplication()
 {
-	mRenderer.release();
+	//mRenderer.release();
 }
 
 int MxEngine::MxWindowsApplication::Initialize()
@@ -66,8 +69,10 @@ int MxEngine::MxWindowsApplication::Initialize()
 	ShowWindow(mhMainWnd, SW_SHOW);
 	UpdateWindow(mhMainWnd);
 
+	m_context.InitContext(mhMainWnd);
+	
 	//initialize renderer
-	mRenderer->Initialize(mhAppInst, mhMainWnd);
+	//mRenderer->Initialize(mhAppInst, mhMainWnd);
 	
     return BaseApplication::Initialize();
 }
@@ -101,7 +106,9 @@ int MxEngine::MxWindowsApplication::Tick()
 			if (!mAppPaused)
 			{
 				CalculateFrameStats();
+				m_editor.Update(mTimer.DeltaTime());
 				//Renderer->TickRenderer(mTimer);
+				//mRenderer->Tick(mTimer);
 			}
 			else
 			{

@@ -6,10 +6,11 @@
 //***************************************************************************************
 #include "../Common/d3dUtil.h"
 #include "../Common/GameTimer.h"
-#include "../imgui/imgui.h"
-#include "../imgui/imgui_impl_win32.h"
-#include "../imgui/imgui_impl_dx12.h"
-
+/*
+#include "MxUI/Imgui/imgui.h"
+#include "MxUI/Imgui/imgui_impl_win32.h"
+#include "MxUI/Imgui/imgui_impl_dx12.h"
+*/
 
 #include "../Common/MathHelper.h"
 #include "../Common/UploadBuffer.h"
@@ -55,8 +56,7 @@ public:
 	static MxRenderer* GetRenderer();
 	ComPtr<ID3D12Device> GetDevice() { return md3dDevice; }
 	ComPtr<ID3D12GraphicsCommandList> GetCommandList() { return mCommandList; }
-
-
+	
 	//存储资源
 	void SaveMesh(std::unique_ptr<MeshGeometry>& mgo);
 	void SaveTexturePath(const std::string& name, std::wstring& path);
@@ -129,12 +129,14 @@ protected:
 	static MxRenderer* mRenderer;
 	
 private:
+
+
 	HINSTANCE mhAppInst = nullptr; // application instance handle
 	HWND      mhMainWnd = nullptr; // main window handle
 	
+	ComPtr<ID3D12Device> md3dDevice;
 	ComPtr<IDXGIFactory4> mdxgiFactory;
 	ComPtr<IDXGISwapChain> mSwapChain;
-	ComPtr<ID3D12Device> md3dDevice;
 	ComPtr<ID3D12Fence> mFence;
 	UINT64 mCurrentFence = 0;
 	

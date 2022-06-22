@@ -4,6 +4,7 @@
 
 void MxEngine::MxGui::Initialize(ID3D12Device* device, HWND& winHandle)
 {
+	/*
 	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	desc.NumDescriptors = 1;
@@ -27,10 +28,12 @@ void MxEngine::MxGui::Initialize(ID3D12Device* device, HWND& winHandle)
 		DXGI_FORMAT_R8G8B8A8_UNORM, mGuiSrvDescriptorHeap.Get(),
 		mGuiSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
 		mGuiSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+		*/
 }
 
 void MxEngine::MxGui::tick_pre()
 {
+	/*
 	{
 		// Start the Dear ImGui frame
 		ImGui_ImplDX12_NewFrame();
@@ -38,10 +41,12 @@ void MxEngine::MxGui::tick_pre()
 		ImGui::NewFrame();
 		onTick();
 	}
+	*/
 }
 
 void MxEngine::MxGui::onTick()
 {
+	/*
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 	{
@@ -62,6 +67,7 @@ void MxEngine::MxGui::onTick()
 		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / MxWorld::GetWorld()->GetFPS(), MxWorld::GetWorld()->GetFPS());
 		ImGui::End();
 	}
+	*/
 }
 
 void MxEngine::MxGui::tick_post()
@@ -71,6 +77,7 @@ void MxEngine::MxGui::tick_post()
 
 void MxEngine::MxGui::draw_frame()
 {
+	/*
 	// Rendering
 	ImGui::Render();
 
@@ -79,13 +86,16 @@ void MxEngine::MxGui::draw_frame()
 	auto commandList = MxEngine::MxRenderer::GetRenderer()->GetCommandList();
 	commandList->SetDescriptorHeaps(1, GuidescriptorHeaps);
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList.Get());
+	*/
 }
 
 void MxEngine::MxGui::clear()
 {
+	/*
 	// Cleanup
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
+	*/
 }
 

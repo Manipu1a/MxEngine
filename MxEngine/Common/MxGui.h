@@ -16,6 +16,7 @@ namespace MxEngine
 class MxGui
 {
 public:
+    
     MxGui() {}
     void Initialize(ID3D12Device* device, HWND& winHandle);
     void tick_pre();
