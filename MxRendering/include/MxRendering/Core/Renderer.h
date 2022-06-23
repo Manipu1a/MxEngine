@@ -40,7 +40,7 @@ namespace MxRendering::Core
 		MxRenderer& operator=(const MxRenderer& rhs) = delete;
 		~MxRenderer();
 
-		bool Initialize(HINSTANCE hInstance, HWND hWnd);
+		bool Initialize(HINSTANCE* hInstance, HWND* p_Hwnd, ID3D12Device* p_Device);
 		void Tick(const GameTimer& gt);
 
 
@@ -124,10 +124,10 @@ namespace MxRendering::Core
 
 	private:
 
-
-		HINSTANCE mhAppInst = nullptr; // application instance handle
-		HWND      mhMainWnd = nullptr; // main window handle
-
+		ComPtr<HINSTANCE> mhAppInst = nullptr;
+		ComPtr<HWND> mhMainWnd = nullptr;
+		//HINSTANCE mhAppInst = nullptr; // application instance handle
+		//HWND      mhMainWnd = nullptr; // main window handle
 		ComPtr<ID3D12Device> md3dDevice;
 		ComPtr<IDXGIFactory4> mdxgiFactory;
 		ComPtr<IDXGISwapChain> mSwapChain;

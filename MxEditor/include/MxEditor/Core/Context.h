@@ -4,9 +4,7 @@
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <memory>
-
-namespace MxEngine { class MxRenderer; }
-
+#include "MxRendering/Core/Renderer.h"
 
 namespace MxUI::Core
 {
@@ -43,7 +41,8 @@ namespace MxEditor::Core
         Microsoft::WRL::ComPtr<ID3D12Device> md3dDevice;
         Microsoft::WRL::ComPtr<IDXGIFactory4> mdxgiFactory;
 
-        std::unique_ptr<MxEngine::MxRenderer> mRenderer;
+        
+        std::unique_ptr<MxRendering::Core::MxRenderer> mRenderer;
         std::unique_ptr<MxUI::Core::UIManager> uiManager;
 
     };

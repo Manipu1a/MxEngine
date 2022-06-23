@@ -7,7 +7,7 @@ MxEditor::Core::Context::Context(const std::string& p_projectPath, const std::st
     projectPath(p_projectPath),
     projectName(p_projectName)
 {
-    
+    mRenderer = std::make_unique<MxRendering::Core::MxRenderer>();
 
 }
 
@@ -22,6 +22,7 @@ void MxEditor::Core::Context::InitContext(HWND hWnd)
     InitCommandObject();
     mhMainWnd = hWnd;
     
+    mRenderer->Initialize(mhAppInst, mhMainWnd);
     uiManager = std::make_unique<MxUI::Core::UIManager>(md3dDevice.Get(),&mhMainWnd);
 }
 

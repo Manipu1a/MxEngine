@@ -36,7 +36,7 @@ MxRendering::Core::MxRenderer::~MxRenderer()
 }
 
 
-bool MxRendering::Core::MxRenderer::Initialize(HINSTANCE hInstance, HWND hWnd)
+bool MxRendering::Core::MxRenderer::Initialize(ComPtr<HINSTANCE> hInstance, ComPtr<HWND> hWnd)
 {
 	mhAppInst = hInstance;
 	mhMainWnd = hWnd;
@@ -52,7 +52,7 @@ bool MxRendering::Core::MxRenderer::Initialize(HINSTANCE hInstance, HWND hWnd)
 
 	mCamera.SetPosition(0.0f, 2.0f, -15.0f);
 	BuildCubeFaceCamera(0.0f, 0.0f, 0.0f);
-	mShadowMap = std::make_unique<ShadowMap>(
+	mShadowMap = std::make_unique<MxRendering::Resources::ShadowMap>(
 		md3dDevice.Get(), 2048, 2048);
 
 	mEnvCubeMap = std::make_unique<MxCubeRenderTarget>(md3dDevice.Get(),
