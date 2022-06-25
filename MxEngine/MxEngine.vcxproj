@@ -81,7 +81,7 @@
     <OutDir>..\Bin\Debug\MxEngine\</OutDir>
     <IntDir>..\Intermediate\Debug\MxEngineEditor\</IntDir>
     <TargetName>MxEngine</TargetName>
-    <LibraryPath>..\Bin\Debug\MxUI;..\Bin\Debug\MxEditor;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\Bin\Debug\MxRendering;..\Bin\Debug\MxUI;..\Bin\Debug\MxEditor;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -122,7 +122,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>Default</ConformanceMode>
       <PrecompiledHeader />
-      <AdditionalIncludeDirectories>..\MxEditor\include;..\MxUI\include;..\MxMath;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MxEditor\include;..\MxUI\include;..\MxMath;..\MxRendering\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -147,34 +147,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="cgltf\cgltf.h" />
-    <ClInclude Include="cgltf\cgltf_write.h" />
     <ClInclude Include="Common\BaseApplication.h" />
-    <ClInclude Include="Common\Camera.h" />
-    <ClInclude Include="Common\CommonVertexFormat.h" />
-    <ClInclude Include="Common\EngineConfiguration.h" />
-    <ClInclude Include="Common\MxCubeRenderTarget.h" />
-    <ClInclude Include="Common\d3dUtil.h" />
-    <ClInclude Include="Common\d3dx12.h" />
     <ClInclude Include="Common\EngineConfig.h" />
-    <ClInclude Include="Common\FrameResource.h" />
+    <ClInclude Include="Common\EngineConfiguration.h" />
     <ClInclude Include="Common\GameTimer.h" />
-    <ClInclude Include="Common\GeometryGenerator.h" />
-    <ClInclude Include="Common\LoadTexture\DDSTextureLoader.h" />
-    <ClInclude Include="Common\LoadTexture\Resource.h" />
-    <ClInclude Include="Common\LoadTexture\WICTextureLoader.h" />
-    <ClInclude Include="Common\MathHelper.h" />
-    <ClInclude Include="Common\MxGui.h" />
-    <ClInclude Include="Common\MxRenderTargetBase.h" />
-    <ClInclude Include="Common\MxRes.h" />
-    <ClInclude Include="Common\MxRenderTarget.h" />
-    <ClInclude Include="Common\ShadowMap.h" />
-    <ClInclude Include="Common\UploadBuffer.h" />
-    <ClInclude Include="Core\MxLevel.h" />
-    <ClInclude Include="Core\MxObject.h" />
-    <ClInclude Include="Core\MxRenderComponent.h" />
-    <ClInclude Include="Core\MxWorld.h" />
-    <ClInclude Include="Core\MxRenderer.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Interface\IApplication.hpp" />
     <ClInclude Include="Interface\Interface.hpp" />
@@ -186,25 +162,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common\BaseApplication.cpp" />
-    <ClCompile Include="Common\Camera.cpp" />
-    <ClCompile Include="Common\MxCubeRenderTarget.cpp" />
-    <ClCompile Include="Common\d3dUtil.cpp" />
-    <ClCompile Include="Common\FrameResource.cpp" />
     <ClCompile Include="Common\GameTimer.cpp" />
-    <ClCompile Include="Common\GeometryGenerator.cpp" />
-    <ClCompile Include="Common\LoadTexture\DDSTextureLoader.cpp" />
-    <ClCompile Include="Common\LoadTexture\Resource.cpp" />
-    <ClCompile Include="Common\LoadTexture\WICTextureLoader.cpp" />
-    <ClCompile Include="Common\MathHelper.cpp" />
-    <ClCompile Include="Common\MxGui.cpp" />
-    <ClCompile Include="Common\MxRenderTarget.cpp" />
-    <ClCompile Include="Common\MxRenderTargetBase.cpp" />
-    <ClCompile Include="Common\ShadowMap.cpp" />
-    <ClCompile Include="Core\MxLevel.cpp" />
-    <ClCompile Include="Core\MxObject.cpp" />
-    <ClCompile Include="Core\MxRenderComponent.cpp" />
-    <ClCompile Include="Core\MxWorld.cpp" />
-    <ClCompile Include="Core\MxRenderer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Platform\Windows\MxWindowsApplication.cpp" />
   </ItemGroup>

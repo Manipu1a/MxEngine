@@ -23,7 +23,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 		g_pApp->Initialize();
         return g_pApp->Run();
     }
-    catch (DxException& e)
+    catch (MxEngine::DxException& e)
     {
 		MessageBox(nullptr, e.ToString().c_str(), L"HR Failed", MB_OK);
 		return 0;

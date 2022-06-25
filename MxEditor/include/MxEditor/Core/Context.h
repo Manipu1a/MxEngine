@@ -6,10 +6,7 @@
 #include <memory>
 #include "MxRendering/Core/Renderer.h"
 
-namespace MxUI::Core
-{
-    class UIManager;
-}
+namespace MxUI::Core{ class UIManager; }
 
 namespace MxEditor::Core
 {
@@ -20,7 +17,7 @@ namespace MxEditor::Core
 
         ~Context();
 
-        void InitContext(HWND hWnd);
+        void InitContext(HWND hWnd, HINSTANCE hInstance);
         void InitD3D();
         void InitCommandObject();
         
@@ -44,6 +41,5 @@ namespace MxEditor::Core
         
         std::unique_ptr<MxRendering::Core::MxRenderer> mRenderer;
         std::unique_ptr<MxUI::Core::UIManager> uiManager;
-
     };
 }

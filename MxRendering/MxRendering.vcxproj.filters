@@ -48,10 +48,10 @@
     <ClInclude Include="include\MxRendering\Common\MathHelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\MxRendering\Resources\MxCubeRenderTarget.h">
+    <ClInclude Include="include\MxRendering\Resources\CubeRenderTarget.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\MxRendering\Resources\MxRenderTarget.h">
+    <ClInclude Include="include\MxRendering\Resources\RenderTarget.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\MxRendering\Resources\MxRenderTargetBase.h">
@@ -81,6 +81,12 @@
     <ClInclude Include="include\MxRendering\Resources\Loaders\WICTextureLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\MxRendering\Resources\cgltf\cgltf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\MxRendering\Resources\cgltf\cgltf_write.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\MxRendering\Core\Renderer.cpp">
@@ -104,10 +110,10 @@
     <ClCompile Include="src\MxRendering\Common\MathHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\MxRendering\Resources\MxCubeRenderTarget.cpp">
+    <ClCompile Include="src\MxRendering\Resources\CubeRenderTarget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\MxRendering\Resources\MxRenderTarget.cpp">
+    <ClCompile Include="src\MxRendering\Resources\RenderTarget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\MxRendering\Resources\MxRenderTargetBase.cpp">

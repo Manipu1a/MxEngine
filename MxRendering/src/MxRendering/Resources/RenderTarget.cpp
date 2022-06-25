@@ -1,4 +1,4 @@
-#include "MxRendering/Resources/MxRenderTarget.h"
+#include "MxRendering/Resources/RenderTarget.h"
 MxRendering::Resources::MxRenderTarget::MxRenderTarget(ID3D12Device* device, UINT width, UINT height, DXGI_FORMAT format, UINT mipmap /*= 1*/, UINT RtNum) : MxRenderTargetBase(device,width,height,format,mipmap,RtNum)
 {
 	md3dDevice = device;

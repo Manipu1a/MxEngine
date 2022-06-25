@@ -25,6 +25,8 @@
     <ClInclude Include="include\MxRendering\Common\d3dx12.h" />
     <ClInclude Include="include\MxRendering\Common\EngineConfig.h" />
     <ClInclude Include="include\MxRendering\Common\EngineConfiguration.h" />
+    <ClInclude Include="include\MxRendering\Resources\cgltf\cgltf.h" />
+    <ClInclude Include="include\MxRendering\Resources\cgltf\cgltf_write.h" />
     <ClInclude Include="include\MxRendering\Resources\FrameResource.h" />
     <ClInclude Include="include\MxRendering\Common\GameTimer.h" />
     <ClInclude Include="include\MxRendering\Common\GeometryGenerator.h" />
@@ -34,8 +36,8 @@
     <ClInclude Include="include\MxRendering\Resources\Loaders\WICTextureLoader.h" />
     <ClInclude Include="include\MxRendering\Resources\Resource.h" />
     <ClInclude Include="include\MxRendering\Common\MathHelper.h" />
-    <ClInclude Include="include\MxRendering\Resources\MxCubeRenderTarget.h" />
-    <ClInclude Include="include\MxRendering\Resources\MxRenderTarget.h" />
+    <ClInclude Include="include\MxRendering\Resources\CubeRenderTarget.h" />
+    <ClInclude Include="include\MxRendering\Resources\RenderTarget.h" />
     <ClInclude Include="include\MxRendering\Resources\MxRenderTargetBase.h" />
     <ClInclude Include="include\MxRendering\Resources\MxRes.h" />
     <ClInclude Include="include\MxRendering\Resources\ShadowMap.h" />
@@ -52,8 +54,8 @@
     <ClCompile Include="src\MxRendering\Resources\Loaders\WICTextureLoader.cpp" />
     <ClCompile Include="src\MxRendering\Resources\Resource.cpp" />
     <ClCompile Include="src\MxRendering\Common\MathHelper.cpp" />
-    <ClCompile Include="src\MxRendering\Resources\MxCubeRenderTarget.cpp" />
-    <ClCompile Include="src\MxRendering\Resources\MxRenderTarget.cpp" />
+    <ClCompile Include="src\MxRendering\Resources\CubeRenderTarget.cpp" />
+    <ClCompile Include="src\MxRendering\Resources\RenderTarget.cpp" />
     <ClCompile Include="src\MxRendering\Resources\MxRenderTargetBase.cpp" />
     <ClCompile Include="src\MxRendering\Resources\ShadowMap.cpp" />
     <ClCompile Include="src\MxRendering\Core\Renderer.cpp" />
@@ -169,12 +171,12 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PreprocessorDefinitions>_DEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>false</ConformanceMode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>include;..\MxMath;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include;..\MxMath;..\MxEditor\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>

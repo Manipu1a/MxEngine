@@ -26,7 +26,7 @@
 #include <sstream>
 #include <cassert>
 #include "d3dx12.h"
-#include "LoadTexture/DDSTextureLoader.h"
+#include "MxRendering/Resources/Loaders/DDSTextureLoader.h"
 #include "MathHelper.h"
 #include "CommonVertexFormat.h"
 

@@ -22,6 +22,6 @@ namespace MxEditor::Core
         MxUI::Core::Canvas mCanvas;
         MxEditor::Core::Context& mContext;
         MxEditor::Core::EditorRenderer mEditorRenderer;
-       // MxEditor::Core::PanelManager mPanelsManager;
+        MxEditor::Core::PanelManager mPanelsManager;
     };
 }

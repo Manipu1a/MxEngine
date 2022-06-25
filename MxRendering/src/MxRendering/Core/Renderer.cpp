@@ -1,8 +1,8 @@
 #include "MxRendering/Core/Renderer.h"
 #include "MxRendering/Common/GeometryGenerator.h"
 #include "MxRendering/Resources/Resource.h"
-#include "MxRendering/Resources/MxCubeRenderTarget.h"
-#include "MxRendering/Resources/MxRenderTarget.h"
+#include "MxRendering/Resources/CubeRenderTarget.h"
+#include "MxRendering/Resources/RenderTarget.h"
 //#include "MxWorld.h"
 //#include "MxLevel.h"
 //#include "MxRenderComponent.h"
@@ -11,6 +11,8 @@
 const int gNumFrameResources = 3;
 const int gPrefilterLevel = 6;
 const UINT CubeMapSize = 512;
+
+using namespace MxRendering::Resources;
 
 namespace MxRendering::Core
 {
@@ -21,8 +23,12 @@ namespace MxRendering::Core
 	}
 }
 
-MxRendering::Core::MxRenderer::MxRenderer()
+MxRendering::Core::MxRenderer::MxRenderer(HINSTANCE p_Instance, HWND p_Hwnd, ID3D12Device* p_Device)
 {
+	mhAppInst = p_Instance;
+	mhMainWnd = p_Hwnd;
+	md3dDevice = p_Device;
+
 	mSceneBounds.Center = XMFLOAT3(0.0f, 0.0f, 0.0f);
 	mSceneBounds.Radius = 60.0;
 	mRenderer = this;
@@ -36,10 +42,10 @@ MxRendering::Core::MxRenderer::~MxRenderer()
 }
 
 
-bool MxRendering::Core::MxRenderer::Initialize(ComPtr<HINSTANCE> hInstance, ComPtr<HWND> hWnd)
+bool MxRendering::Core::MxRenderer::Initialize()
 {
-	mhAppInst = hInstance;
-	mhMainWnd = hWnd;
+	//mhAppInst = hInstance;
+	//mhMainWnd = hWnd;
 
 	if (!InitDirect3D())
 		return false;
@@ -52,7 +58,7 @@ bool MxRendering::Core::MxRenderer::Initialize(ComPtr<HINSTANCE> hInstance, ComP
 
 	mCamera.SetPosition(0.0f, 2.0f, -15.0f);
 	BuildCubeFaceCamera(0.0f, 0.0f, 0.0f);
-	mShadowMap = std::make_unique<MxRendering::Resources::ShadowMap>(
+	mShadowMap = std::make_unique<MxShadowMap>(
 		md3dDevice.Get(), 2048, 2048);
 
 	mEnvCubeMap = std::make_unique<MxCubeRenderTarget>(md3dDevice.Get(),
@@ -305,9 +311,9 @@ void MxRendering::Core::MxRenderer::Draw(const GameTimer& gt)
 	mCommandList->SetPipelineState(mPSOs["sky"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Sky]);
 
-	Gui->tick_pre();
+	//Gui->tick_pre();
 
-	Gui->draw_frame();
+	//Gui->draw_frame();
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
@@ -377,7 +383,7 @@ bool MxRendering::Core::MxRenderer::InitDirect3D()
 #endif
 
 	ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&mdxgiFactory)));
-
+	/*
 	// Try to create hardware device.
 	HRESULT hardwareResult = D3D12CreateDevice(
 		nullptr,             // default adapter
@@ -395,7 +401,8 @@ bool MxRendering::Core::MxRenderer::InitDirect3D()
 			D3D_FEATURE_LEVEL_11_0,
 			IID_PPV_ARGS(&md3dDevice)));
 	}
-
+	*/
+	
 	ThrowIfFailed(md3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE,
 		IID_PPV_ARGS(&mFence)));
 
@@ -521,7 +528,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE MxRendering::Core::MxRenderer::CurrentBackBufferView
 		mRtvDescriptorSize);
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE MxEngine::MxRendering::Core::DepthStencilView() const
+D3D12_CPU_DESCRIPTOR_HANDLE MxRendering::Core::MxRenderer::DepthStencilView() const
 {
 	return mDsvHeap->GetCPUDescriptorHandleForHeapStart();
 }
@@ -942,7 +949,7 @@ void MxRendering::Core::MxRenderer::BuildDescriptorHeaps()
 		IID_PPV_ARGS(&mMaterialSrvDescriptorHeap)));
 
 
-	Gui->Initialize(md3dDevice.Get(), mhMainWnd);
+	//Gui->Initialize(md3dDevice.Get(), mhMainWnd);
 	//D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 	//desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	//desc.NumDescriptors = 1;
@@ -1549,11 +1556,10 @@ void MxRendering::Core::MxRenderer::BuildRenderItems()
 		mAllRitems.push_back(std::move(sphereRitem));
 	}
 
-
+	/*
 	//level items
 	for (auto& object : MxWorld::GetWorld()->GetMainLevel()->LevelObjectsMap)
 	{
-
 		auto levelRitem = std::make_unique<RenderItem>();
 		XMStoreFloat4x4(&levelRitem->World, XMMatrixScaling(1.0f, 1.0f, 1.0f) * XMMatrixTranslation(0.0f, 30.0f, 0.0f));
 		XMStoreFloat4x4(&levelRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
@@ -1567,7 +1573,7 @@ void MxRendering::Core::MxRenderer::BuildRenderItems()
 		mRitemLayer[(int)RenderLayer::Opaque].push_back(levelRitem.get());
 		mAllRitems.push_back(std::move(levelRitem));
 	}
-
+	*/
 
 	mRitemLayer[(int)RenderLayer::DeferredGeo] = mRitemLayer[(int)RenderLayer::Opaque];
 }
@@ -2015,7 +2021,7 @@ void MxRendering::Core::MxRenderer::LoadTexture()
 		auto texObj = std::make_unique<Texture>();
 		texObj->Name = tex.first;
 		texObj->Filename = tex.second;
-		Resource::CreateShaderResourceViewFromFile(texObj->Filename.c_str(), texObj.get());
+		CreateShaderResourceViewFromFile(texObj->Filename.c_str(), texObj.get());
 		if (texObj->Resource)
 		{
 			texObj->TexHeapIndex = index++;
@@ -2029,7 +2035,7 @@ void MxRendering::Core::MxRenderer::LoadTexture()
 		auto texObj = std::make_unique<Texture>();
 		texObj->Name = tex.first;
 		texObj->Filename = tex.second;
-		Resource::CreateShaderResourceViewFromFile(texObj->Filename.c_str(), texObj.get());
+		CreateShaderResourceViewFromFile(texObj->Filename.c_str(), texObj.get());
 		if (texObj)
 		{
 			texObj->TexHeapIndex = index++;
@@ -2154,18 +2160,19 @@ void MxRendering::Core::MxRenderer::BuildMaterial()
 	modelMat->SpecularStrength = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 	modelMat->Ao = 1.0f;
 	mMaterials[modelMat->Name] = std::move(modelMat);
-
+	/*
 	for (auto& object : MxWorld::GetWorld()->GetMainLevel()->LevelObjectsMap)
 	{
 		auto material = object.second->RenderComponent->mMaterial;
 		material->MatCBIndex = matIndex++;
 		mMaterials[material->Name] = std::move(material);
 	}
+	*/
 }
 
 void MxRendering::Core::MxRenderer::LoadModel()
 {
-	Resource::LoadModelFromFile("Assets/GltfModel/DamagedHelmet.gltf");
+	LoadModelFromFile("Assets/GltfModel/DamagedHelmet.gltf");
 }
 
 HINSTANCE MxRendering::Core::MxRenderer::AppInst() const

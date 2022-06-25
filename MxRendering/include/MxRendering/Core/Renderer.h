@@ -15,6 +15,12 @@
 #include "MxRendering/Common/EngineConfig.h"
 #include "MxRendering/Resources/ShadowMap.h"
 
+namespace MxRendering::Resources
+{
+	class MxRenderTarget;
+	class MxCubeRenderTarget;
+	struct FrameResource;
+}
 // Link necessary d3d12 libraries.
 #pragma comment(lib,"d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
@@ -23,11 +29,6 @@
 
 namespace MxRendering::Core
 {
-	class MxGui;
-	class MxRenderTarget;
-	class MxCubeRenderTarget;
-
-
 	using Microsoft::WRL::ComPtr;
 	using namespace DirectX;
 	using namespace DirectX::PackedVector;
@@ -35,12 +36,12 @@ namespace MxRendering::Core
 	class MxRenderer
 	{
 	public:
-		MxRenderer();
+		MxRenderer(HINSTANCE p_Instance, HWND p_Hwnd, ID3D12Device* p_Device);
 		MxRenderer(const MxRenderer& rhs) = delete;
 		MxRenderer& operator=(const MxRenderer& rhs) = delete;
 		~MxRenderer();
 
-		bool Initialize(HINSTANCE* hInstance, HWND* p_Hwnd, ID3D12Device* p_Device);
+		bool Initialize();
 		void Tick(const GameTimer& gt);
 
 
@@ -123,11 +124,8 @@ namespace MxRendering::Core
 		static MxRenderer* mRenderer;
 
 	private:
-
-		ComPtr<HINSTANCE> mhAppInst = nullptr;
-		ComPtr<HWND> mhMainWnd = nullptr;
-		//HINSTANCE mhAppInst = nullptr; // application instance handle
-		//HWND      mhMainWnd = nullptr; // main window handle
+		HINSTANCE mhAppInst = nullptr; // application instance handle
+		HWND      mhMainWnd = nullptr; // main window handle
 		ComPtr<ID3D12Device> md3dDevice;
 		ComPtr<IDXGIFactory4> mdxgiFactory;
 		ComPtr<IDXGISwapChain> mSwapChain;
@@ -215,11 +213,11 @@ namespace MxRendering::Core
 		Camera mCubeMapCamera[6];
 
 		//shadow
-		std::unique_ptr<MxRendering::Resources::ShadowMap> mShadowMap;
+		std::unique_ptr<MxRendering::Resources::MxShadowMap> mShadowMap;
 		DirectX::BoundingSphere mSceneBounds;
 
 		//MRT
-		std::unique_ptr<MxRenderTarget> mGBufferMRT;
+		std::unique_ptr<MxRendering::Resources::MxRenderTarget> mGBufferMRT;
 
 		//LightData
 		float mLightNearZ = 0.0f;
@@ -238,9 +236,9 @@ namespace MxRendering::Core
 		XMMATRIX captureProjection;
 		XMMATRIX captureViews[6];
 
-		std::unique_ptr<MxCubeRenderTarget> mEnvCubeMap = nullptr;
-		std::unique_ptr<MxCubeRenderTarget> mIrradianceCubeMap = nullptr;
-		std::map<int, std::unique_ptr<MxCubeRenderTarget>> mPrefilterCubeMap;
+		std::unique_ptr<MxRendering::Resources::MxCubeRenderTarget> mEnvCubeMap = nullptr;
+		std::unique_ptr<MxRendering::Resources::MxCubeRenderTarget> mIrradianceCubeMap = nullptr;
+		std::map<int, std::unique_ptr<MxRendering::Resources::MxCubeRenderTarget>> mPrefilterCubeMap;
 		std::map<int, ComPtr<ID3D12Resource>> mPrefilterDepthStencilBuffers;
 		std::unique_ptr<UploadBuffer<PrefilterConstants>> PrefilterCB = nullptr;
 

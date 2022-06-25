@@ -1,4 +1,6 @@
 #include "MxWindowsApplication.h"
+#include <comdef.h>
+
 namespace MxEngine
 {
 	EngineConfiguration config(8, 8, 8, 8, 32, 0, 0, 960, 540);
@@ -15,6 +17,25 @@ namespace MxEngine
 		// before CreateWindow returns, and thus before mhMainWnd is valid.
 		return g_App.WindowProc(hwnd, msg, wParam, lParam);
 	}
+
+	DxException::DxException(HRESULT hr, const std::wstring& functionName, const std::wstring& filename, int lineNumber):
+		ErrorCode(hr),
+		FunctionName(functionName),
+		Filename(filename),
+		LineNumber(lineNumber)
+	{
+
+	}
+
+	std::wstring DxException::ToString() const
+	{
+		// Get the string description of the error code.
+		_com_error err(ErrorCode);
+		std::wstring msg = err.ErrorMessage();
+
+		return FunctionName + L" failed in " + Filename + L"; line " + std::to_wstring(LineNumber) + L"; error: " + msg;
+	}
+
 }
 
 
@@ -22,8 +43,7 @@ MxEngine::MxWindowsApplication::MxWindowsApplication(EngineConfiguration& config
 	,m_context(p_projectPath, p_projectName), m_editor(m_context)
 {
 	mhAppInst = GetModuleHandle(NULL);
-	//mRenderer = std::make_unique<MxRenderer>();
-	mWorld = std::make_unique<MxWorld>();
+	//mWorld = std::make_unique<MxWorld>();
 }
 
 MxEngine::MxWindowsApplication::~MxWindowsApplication()
@@ -69,8 +89,8 @@ int MxEngine::MxWindowsApplication::Initialize()
 	ShowWindow(mhMainWnd, SW_SHOW);
 	UpdateWindow(mhMainWnd);
 
-	m_context.InitContext(mhMainWnd);
-	
+	m_context.InitContext(mhMainWnd, mhAppInst);
+	//mRenderer = std::make_unique<MxRenderer>(m_context);
 	//initialize renderer
 	//mRenderer->Initialize(mhAppInst, mhMainWnd);
 	
@@ -107,6 +127,7 @@ int MxEngine::MxWindowsApplication::Tick()
 			{
 				CalculateFrameStats();
 				m_editor.Update(mTimer.DeltaTime());
+				m_context.mRenderer->Tick(mTimer);
 				//Renderer->TickRenderer(mTimer);
 				//mRenderer->Tick(mTimer);
 			}

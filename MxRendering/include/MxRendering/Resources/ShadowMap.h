@@ -8,15 +8,15 @@
 
 namespace MxRendering::Resources
 {
-	class ShadowMap
+	class MxShadowMap
 	{
 	public:
-		ShadowMap(ID3D12Device* device,
+		MxShadowMap(ID3D12Device* device,
 			UINT width, UINT height);
 
-		ShadowMap(const ShadowMap& rhs) = delete;
-		ShadowMap& operator=(const ShadowMap& rhs) = delete;
-		~ShadowMap() = default;
+		MxShadowMap(const MxShadowMap& rhs) = delete;
+		MxShadowMap& operator=(const MxShadowMap& rhs) = delete;
+		~MxShadowMap() = default;
 
 		UINT Width()const;
 		UINT Height()const;

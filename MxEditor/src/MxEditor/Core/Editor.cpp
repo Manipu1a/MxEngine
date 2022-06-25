@@ -2,7 +2,7 @@
 //#include "MxUI/Core/UIManager.h"
 
 
-MxEditor::Core::Editor::Editor(MxEditor::Core::Context& p_context) :mContext(p_context),mEditorRenderer(p_context)/*, mPanelsManager(mCanvas)*/
+MxEditor::Core::Editor::Editor(MxEditor::Core::Context& p_context) :mContext(p_context),mEditorRenderer(p_context), mPanelsManager(mCanvas)
 {
     //SetupUI();
 }

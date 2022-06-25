@@ -1,14 +1,13 @@
 #include "MxEditor/Core/Context.h"
-
 #include "MxUI/Core/UIManager.h"
+
 
 
 MxEditor::Core::Context::Context(const std::string& p_projectPath, const std::string& p_projectName) : 
     projectPath(p_projectPath),
     projectName(p_projectName)
 {
-    mRenderer = std::make_unique<MxRendering::Core::MxRenderer>();
-
+   
 }
 
 MxEditor::Core::Context::~Context()
@@ -16,13 +15,14 @@ MxEditor::Core::Context::~Context()
     
 }
 
-void MxEditor::Core::Context::InitContext(HWND hWnd)
+void MxEditor::Core::Context::InitContext(HWND hWnd, HINSTANCE hInstance)
 {
     InitD3D();
     InitCommandObject();
     mhMainWnd = hWnd;
-    
-    mRenderer->Initialize(mhAppInst, mhMainWnd);
+
+    mRenderer = std::make_unique<MxRendering::Core::MxRenderer>(hInstance, hWnd, md3dDevice.Get());
+    mRenderer->Initialize();
     uiManager = std::make_unique<MxUI::Core::UIManager>(md3dDevice.Get(),&mhMainWnd);
 }
 

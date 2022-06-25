@@ -7,7 +7,7 @@
 #include <limits>
 
 #define CGLTF_IMPLEMENTATION
-#include "../../cgltf/cgltf.h"
+#include "MxRendering/Resources/cgltf/cgltf.h"
 #include "MxRendering/Resources/FrameResource.h"
 #include "MxRendering/Core/Renderer.h"
 
@@ -24,11 +24,11 @@ HRESULT MxRendering::Resources::CreateShaderResourceViewFromFile(const wchar_t* 
 
 	if (_wcsicmp(ext, L".dds") == 0)
 	{
-		hr = DirectX::CreateDDSTextureFromFile12(d3dDevice, commderList, szFileName, textureData->Resource, textureData->UploadHeap);
+		hr = MxRendering::Resources::Loaders::CreateDDSTextureFromFile12(d3dDevice, commderList, szFileName, textureData->Resource, textureData->UploadHeap);
 	}
 	else
 	{
-		hr = DirectX::CreateWICTextureFromFile12(d3dDevice, commderList,szFileName, textureData->Resource, textureData->UploadHeap);
+		hr = MxRendering::Resources::Loaders::CreateWICTextureFromFile12(d3dDevice, commderList,szFileName, textureData->Resource, textureData->UploadHeap);
 	}
 
 	return hr;
